@@ -1,0 +1,972 @@
+ var MusicMouseSlide = exports.MusicMouseSlide = function(_Slide) {
+        _inherits(MusicMouseSlide, _Slide);
+
+        function MusicMouseSlide(element, isPresentationMode) {
+            _classCallCheck(this, MusicMouseSlide);
+
+            var _this = _possibleConstructorReturn(this, (MusicMouseSlide.__proto__ || Object.getPrototypeOf(MusicMouseSlide)).call(this, element, isPresentationMode));
+
+            _this.states = ['init', 'cocreation', 'mm', 'algorithmic', 'agency', 'quote'];
+
+            _this.vis = element.querySelector('.vis');
+            return _this;
+        }
+
+        _createClass(MusicMouseSlide, [{
+            key: 'onEnter',
+            value: function onEnter() {
+                var _this2 = this;
+
+                this.state = this.states[0];
+                this.displayState(false);
+                this.vis.style.opacity = 0;
+
+                _tone.Transport.bpm.value = 60;
+
+                this.tick = 0;
+                this.repeatToken = _tone.Transport.scheduleRepeat(function(time) {
+                    _this2.tick++;
+                    updateState(tick, time, _this2.tick);
+                }, '16n');
+                mountUI(this.element);
+                this.masterGain = new _tone.Gain(1.0).toMaster();
+                loadPiano(this.masterGain);
+            }
+        }, {
+            key: 'onNext',
+            value: function onNext() {
+                var _this3 = this;
+
+                if (this.nextState()) {
+                    if (this.state === 'mm') {
+                        this.vis.style.opacity = 1;
+
+                        setTimeout(function() {
+                            if (!_this3.isPresentationMode && _this3.masterGain && _this3.state === 'mm') {
+                                _this3.onNext();
+                            }
+                        }, 15000);
+                        setTimeout(function() {
+                            if (!_this3.isPresentationMode && _this3.masterGain && _this3.state === 'algorithmic') {
+                                _this3.onNext();
+                            }
+                        }, 30000);
+                        setTimeout(function() {
+                            if (!_this3.isPresentationMode && _this3.masterGain && _this3.state === 'agency') {
+                                _this3.onNext();
+                            }
+                        }, 45000);
+                    }
+                    return false;
+                }
+                _tone.Transport.clear(this.repeatToken);
+                this.repeatToken = null;
+                this.masterGain.gain.setValueAtTime(1.0, _tone2.default.now());
+                this.masterGain.gain.linearRampToValueAtTime(0.0, _tone2.default.now() + 0.5);
+                setTimeout(function() {
+                    unloadPiano();
+                    _this3.masterGain.dispose();
+                    _this3.masterGain = null;
+                    document.exitPointerLock();
+                }, 600);
+                return true;
+            }
+        }, {
+            key: 'onRestore',
+            value: function onRestore() {
+                mountUI(this.element);
+                renderUI(state);
+                this.vis.style.opacity = 1;
+            }
+        }]);
+
+        return MusicMouseSlide;
+    }(_slide.Slide);
+
+    var SURFACE_AREA_SIZE = 600;
+
+    var SCALES = {
+        diatonic: {
+            intervals: [2, 2, 1, 2, 2, 2, 1],
+            voiceSteps: {
+                '3': 4,
+                '4': 9
+            },
+            chromaticJump: -0.5,
+            chromaticSizeAdjust: -2,
+            centerNote: {
+                octave: 5,
+                pitchClass: 0
+            }
+        }
+    };
+    var PATTERNS = {
+        '1': [0, 7, 1, 6, 2, 5, 3, 4, 5, 2, 4, 5, 2, 6, 1, 7]
+    };
+
+    var state = setVoicing(setHarmonicMode({
+        currentTime: 0,
+        currentTick: 0,
+        currentVoices: [],
+        keyboards: [makeKeyboard(50, 3, 5, 'vertical'), makeKeyboard(50, 3, 9, 'horizontal')],
+        isPlaying: false,
+        mousePosition: {
+            horizontal: SURFACE_AREA_SIZE / 2,
+            vertical: SURFACE_AREA_SIZE / 2
+        },
+        accumulatedDelta: {
+            deltaX: 0,
+            deltaY: 0
+        },
+        isCursorsSuppressed: false,
+        patternStepCounter: -1,
+        controls: {
+            voicesOn: {
+                '1': true,
+                '2': true,
+                '3': true,
+                '4': true
+            },
+            harmonicMode: 'diatonic',
+            treatment: 'improvise',
+            transposition: 0,
+            intervalOfTransposition: 1,
+            patternOn: false,
+            patternId: '1',
+            voicing: 'chordMelody',
+            articulation: 'legato',
+            velocity: 95,
+            outputType: 'piano',
+            outputControls: {
+                piano: {
+                    loading: true
+                }
+            }
+        }
+    }, 'diatonic', true, 0), 'chordMelody', true, 0);
+
+    function makeKeyboard(size, startOctave, startPitch, orientation) {
+        var keys = [];
+        var start = startOctave * 12 + startPitch;
+        var end = start + size;
+        for (var index = 0, note = start; note < end; index++,
+        note++) {
+            var octave = Math.floor(note / 12);
+            var pitchClass = note - octave * 12;
+            keys.push({
+                note: {
+                    octave: octave,
+                    pitchClass: pitchClass
+                },
+                index: index
+            });
+        }
+        return {
+            keys: keys,
+            activeKeys: [],
+            orientation: orientation,
+            voiceAssignments: []
+        };
+    }
+
+    function moveCursor(state, deltaX, deltaY) {
+        var _state$accumulatedDel = state.accumulatedDelta
+          , prevDeltaX = _state$accumulatedDel.deltaX
+          , prevDeltaY = _state$accumulatedDel.deltaY;
+
+        var newDelta = {
+            deltaX: prevDeltaX + deltaX,
+            deltaY: prevDeltaY + deltaY
+        };
+        return _extends({}, state, {
+            accumulatedDelta: newDelta
+        });
+    }
+
+    function setCursorPosition(state, pos) {
+        return _extends({}, state, {
+            pendingMousePosition: pos
+        });
+    }
+
+    function changePlayState(state, isPlaying) {
+        return _extends({}, state, {
+            isPlaying: isPlaying
+        });
+    }
+
+    function toggleCursorSuppress(state, isCursorsSuppressed, currentTime) {
+        var newState = _extends({}, state, {
+            isCursorsSuppressed: isCursorsSuppressed
+        });
+        if (isCursorsSuppressed) {
+            return newState;
+        } else {
+            return retrigger(newState, currentTime);
+        }
+    }
+
+    function tick(state, currentTime, currentTick) {
+        var scale = SCALES[state.controls.harmonicMode];
+        var _state$accumulatedDel2 = state.accumulatedDelta
+          , deltaX = _state$accumulatedDel2.deltaX
+          , deltaY = _state$accumulatedDel2.deltaY;
+
+        var pendingPos = state.pendingMousePosition;
+        var newHoriz = void 0
+          , newVert = void 0;
+        if (pendingPos) {
+            newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
+            newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        } else {
+            newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.horizontal + deltaY));
+            newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.vertical + deltaX));
+        }
+        var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
+        var mousePosition = mousePositionChanged ? {
+            horizontal: newHoriz,
+            vertical: newVert
+        } : state.mousePosition;
+        var patternStepCounter = state.isPlaying && state.controls.patternOn && !mousePositionChanged && Math.max.apply(Math, _toConsumableArray(state.currentVoices.map(function(v) {
+            return v.playOnTick;
+        }))) - currentTick < 0 ? state.patternStepCounter + 1 : state.patternStepCounter;
+        return updateVoices(_extends({}, state, {
+            currentTime: currentTime,
+            currentTick: currentTick,
+            mousePosition: mousePosition,
+            accumulatedDelta: {
+                deltaX: 0,
+                deltaY: 0
+            },
+            pendingMousePosition: undefined,
+            patternStepCounter: patternStepCounter
+        }), 'treatment');
+    }
+
+    function updateVoices(state, scheduling) {
+        var updates = getUpdatedVoices(state, state.currentTime, scheduling);
+        return _extends({}, state, {
+            currentVoices: (0,
+            _lodash.unionBy)(updates, state.currentVoices, function(v) {
+                return v.voiceId;
+            })
+        });
+    }
+
+    function getUpdatedVoices(state, time, scheduling) {
+        var noTick = state.isCursorsSuppressed || scheduling === 'none';
+        var changedKeys = getChangedVoiceKeys(state);
+        var tickMapping = getTickMapping(changedKeys.map(function(k) {
+            return k.voiceId;
+        }), state.currentTick, state.controls.treatment, scheduling, state.controls.patternOn);
+        return changedKeys.map(function(_ref, index) {
+            var voiceId = _ref.voiceId
+              , keyboard = _ref.keyboard
+              , key = _ref.key;
+
+            var previous = (0,
+            _lodash.find)(state.currentVoices, {
+                voiceId: voiceId
+            });
+            var tick = noTick ? -1 : tickMapping[voiceId];
+
+            return {
+                voiceId: voiceId,
+                currentKey: key,
+                playOnTick: tick,
+                triggeredOnTick: state.currentTick,
+                articulation: state.controls.articulation,
+                velocity: state.controls.velocity,
+                keyboardOrientation: keyboard.orientation,
+                keyboardSize: keyboard.keys.length
+            };
+        });
+    }
+
+    function getTickMapping(voiceIds, currentTick, treatment, scheduling, patternOn) {
+        var mapping = {};
+        if (treatment === 'line' && scheduling === 'treatment') {
+            voiceIds.forEach(function(vid, index) {
+                return mapping[vid] = currentTick + index;
+            });
+        } else if (treatment === 'improvise' && scheduling === 'treatment' && voiceIds.length > 0) {
+            var voicePartitions = partitions(voiceIds);
+            var chosenPartition = voicePartitions[Math.floor(Math.random() * voicePartitions.length)];
+            var _tick = patternOn && Math.random() < 0.2 ? currentTick + 1 : currentTick;
+            chosenPartition.forEach(function(voiceIdsForPart) {
+                voiceIdsForPart.forEach(function(vid) {
+                    return mapping[vid] = _tick;
+                });
+                _tick = patternOn && Math.random() < 0.2 ? _tick + 2 : _tick + 1;
+            });
+        } else {
+            voiceIds.forEach(function(vid) {
+                return mapping[vid] = currentTick;
+            });
+        }
+        return mapping;
+    }
+
+    function partitions(arr) {
+        if (arr.length === 0) {
+            return [];
+        } else if (arr.length === 1) {
+            return [[arr]];
+        } else {
+            var _arr = _toArray(arr)
+              , first = _arr[0]
+              , rest = _arr.slice(1);
+
+            var restPartitions = partitions(rest);
+            return (0,
+            _lodash.flatMap)(restPartitions, function(part) {
+                return [[[first]].concat(part), [[first].concat(part[0])].concat(_toConsumableArray((0,
+                _lodash.tail)(part)))];
+            });
+        }
+    }
+
+    function getChangedVoiceKeys(state) {
+        var newVoiceKeys = getCurrentVoiceKeys(state);
+        var changedVoiceKeys = newVoiceKeys.filter(function(_ref2) {
+            var voiceId = _ref2.voiceId
+              , key = _ref2.key;
+
+            var previous = (0,
+            _lodash.find)(state.currentVoices, {
+                voiceId: voiceId
+            });
+            return !previous || previous.currentKey !== key;
+        });
+        return changedVoiceKeys;
+    }
+
+    function getCurrentVoiceKeys(_ref3) {
+        var controls = _ref3.controls
+          , keyboards = _ref3.keyboards
+          , mousePosition = _ref3.mousePosition
+          , patternStepCounter = _ref3.patternStepCounter;
+
+        var scale = SCALES[controls.harmonicMode];
+        var pattern = PATTERNS[controls.patternId];
+        return (0,
+        _lodash.flatMap)(keyboards, function(keyboard) {
+            var rootKeyIdx = getActiveKeyIdx(keyboard, scale, mousePosition);
+            var contraryMirrorIndex = void 0;
+            if (controls.patternOn) {
+                var allPatternKeyIdxs = pattern.map(function(offset) {
+                    return rootKeyIdx + offset;
+                });
+                var minPatternKeyIdx = Math.min.apply(Math, _toConsumableArray(allPatternKeyIdxs));
+                var maxPatternKeyIdx = Math.max.apply(Math, _toConsumableArray(allPatternKeyIdxs));
+                contraryMirrorIndex = Math.floor(minPatternKeyIdx + (maxPatternKeyIdx - minPatternKeyIdx) / 2);
+                rootKeyIdx = rootKeyIdx + pattern[patternStepCounter % pattern.length];
+            } else {
+                var scaleCenterNote = scale.centerNote.octave * 12 + scale.centerNote.pitchClass + controls.transposition;
+                contraryMirrorIndex = (0,
+                _lodash.findIndex)(keyboard.activeKeys, function(k) {
+                    return k.key.note.octave * 12 + k.key.note.pitchClass === scaleCenterNote;
+                });
+            }
+            return keyboard.voiceAssignments.filter(function(voiceId) {
+                return controls.voicesOn[voiceId];
+            }).map(function(voiceId) {
+                return {
+                    voiceId: voiceId,
+                    keyIdx: rootKeyIdx + (scale.voiceSteps[voiceId] || 0)
+                };
+            }).map(function(_ref4) {
+                var voiceId = _ref4.voiceId
+                  , keyIdx = _ref4.keyIdx;
+
+                var key = keyIdx >= 0 && keyIdx < keyboard.activeKeys.length ? keyboard.activeKeys[keyIdx].key : undefined;
+                return {
+                    voiceId: voiceId,
+                    key: key,
+                    keyboard: keyboard
+                };
+            });
+        });
+    }
+
+    function retrigger(state, currentTime) {
+        var maxTick = Math.max.apply(Math, _toConsumableArray(state.currentVoices.map(function(v) {
+            return v.triggeredOnTick;
+        })));
+        var updatesToMake = state.currentVoices.filter(function(v) {
+            return v.triggeredOnTick === maxTick;
+        }).map(function(voice, index) {
+            return _extends({}, voice, {
+                playOnTick: state.controls.treatment === 'line' ? state.currentTick + index + 1 : state.currentTick,
+                triggeredOnTick: state.currentTick
+            });
+        });
+        return _extends({}, state, {
+            currentTime: currentTime,
+            currentVoices: (0,
+            _lodash.unionBy)(updatesToMake, state.currentVoices, function(v) {
+                return v.voiceId;
+            })
+        });
+    }
+
+    function setHarmonicMode(state, harmonicMode, muteChange, currentTime) {
+        var newState = setActiveKeys(_extends({}, state, {
+            controls: _extends({}, state.controls, {
+                harmonicMode: harmonicMode
+            })
+        }));
+        var scheduling = muteChange ? 'none' : 'allAtOnce';
+        var updatedVoices = getUpdatedVoices(newState, currentTime, scheduling);
+        if (updatedVoices.length > 0) {
+            return _extends({}, newState, {
+                currentVoices: (0,
+                _lodash.unionBy)(updatedVoices, newState.currentVoices, function(v) {
+                    return v.voiceId;
+                }),
+                currentTime: currentTime
+            });
+        } else if (!muteChange) {
+            return retrigger(newState, currentTime);
+        } else {
+            return newState;
+        }
+    }
+
+    function setTransposition(state, transposition, muteChange, currentTime) {
+        var scale = SCALES[state.controls.harmonicMode];
+        var transpositionDelta = transposition - state.controls.transposition;
+        var transposedState = setActiveKeys(_extends({}, state, {
+            controls: _extends({}, state.controls, {
+                transposition: transposition
+            })
+        }));
+        var newMousePos = (0,
+        _lodash.mapValues)(state.mousePosition, function(position, orientation) {
+            var oldKeyboard = (0,
+            _lodash.find)(state.keyboards, function(k) {
+                return k.orientation === orientation;
+            });
+            var newKeyboard = (0,
+            _lodash.find)(transposedState.keyboards, function(k) {
+                return k.orientation === orientation;
+            });
+            var oldActiveKeyIdx = getActiveKeyIdx(oldKeyboard, scale, state.mousePosition);
+            var transposedKeyIdx = oldKeyboard.activeKeys[oldActiveKeyIdx].key.index + transpositionDelta;
+            var newActiveKey = newKeyboard.activeKeys.find(function(k) {
+                return k.key.index === transposedKeyIdx;
+            });
+            if (newActiveKey) {
+                return newActiveKey.startPos + 1;
+            } else {
+                return position;
+            }
+        });
+        var scheduling = muteChange ? 'none' : 'allAtOnce';
+        return updateVoices(_extends({}, transposedState, {
+            mousePosition: newMousePos,
+            currentTime: currentTime
+        }), scheduling);
+    }
+
+    function setIntervalOfTransposition(state, intervalOfTransposition) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                intervalOfTransposition: intervalOfTransposition
+            })
+        });
+    }
+
+    function togglePattern(state) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                patternOn: !state.controls.patternOn
+            })
+        });
+    }
+
+    function setPattern(state, patternId) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                patternId: patternId
+            })
+        });
+    }
+
+    function setVoicing(state, voicing, muteChange, currentTime) {
+        return updateVoices(_extends({}, state, {
+            controls: _extends({}, state.controls, {
+                voicing: voicing
+            }),
+            currentTime: currentTime,
+            keyboards: state.keyboards.map(function(keyboard) {
+                return _extends({}, keyboard, {
+                    voiceAssignments: getVoiceAssignments(voicing, keyboard.orientation)
+                });
+            })
+        }), muteChange ? 'none' : 'allAtOnce');
+    }
+
+    function getVoiceAssignments(voicing, orientation) {
+        if (voicing === 'chordMelody') {
+            return orientation === 'horizontal' ? ['1'] : ['2', '3', '4'];
+        } else {
+            return orientation === 'horizontal' ? ['1', '4'] : ['2', '3'];
+        }
+    }
+
+    function setActiveKeys(state) {
+        var scale = SCALES[state.controls.harmonicMode];
+        var intervalSum = (0,
+        _lodash.sum)(scale.intervals);
+        var intervalSteps = scale.intervals.reduce(function(steps, interval) {
+            return steps.concat((0,
+            _lodash.last)(steps) + interval);
+        }, [0]);
+        var newKeyboards = state.keyboards.map(function(keyboard) {
+            var newActiveKeys = keyboard.keys.filter(function(key) {
+                var noteValue = key.note.octave * 12 + key.note.pitchClass - state.controls.transposition % 12;
+                var valueInCycle = noteValue % intervalSum;
+                return (0,
+                _lodash.includes)(intervalSteps, valueInCycle);
+            });
+            var keyWidth = SURFACE_AREA_SIZE / (newActiveKeys.length + scale.chromaticSizeAdjust);
+            var activeKeysWithSizes = newActiveKeys.map(function(key, idx) {
+                return {
+                    key: key,
+                    startPos: (idx + scale.chromaticJump) * keyWidth,
+                    width: keyWidth
+                };
+            });
+            return _extends({}, keyboard, {
+                activeKeys: activeKeysWithSizes
+            });
+        });
+        return _extends({}, state, {
+            keyboards: newKeyboards
+        });
+    }
+
+    function setTreatment(state, treatment) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                treatment: treatment
+            })
+        });
+    }
+
+    function setArticulation(state, articulation) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                articulation: articulation
+            })
+        });
+    }
+
+    function adjustVelocity(state, velocity) {
+        var controls = _extends({}, state.controls, {
+            velocity: velocity
+        });
+        return _extends({}, state, {
+            controls: controls
+        });
+    }
+
+    function toggleVoice(state, voice) {
+        var voicesOn = _extends({}, state.controls.voicesOn, _defineProperty({}, voice, !state.controls.voicesOn[voice]));
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                voicesOn: voicesOn
+            })
+        });
+    }
+
+    function setOutputType(state, outputType) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                outputType: outputType
+            })
+        });
+    }
+
+    function setMidiControl(state, name, value) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                outputControls: _extends({}, state.controls.outputControls, {
+                    midi: _extends({}, state.controls.outputControls.midi, _defineProperty({}, name, value))
+                })
+            })
+        });
+    }
+
+    function setPianoControl(state, name, value) {
+        return _extends({}, state, {
+            controls: _extends({}, state.controls, {
+                outputControls: _extends({}, state.controls.outputControls, {
+                    piano: _extends({}, state.controls.outputControls.piano, _defineProperty({}, name, value))
+                })
+            })
+        });
+    }
+
+    function getActiveKeyIdx(keyboard, scale, mousePosition) {
+        var mousePos = mousePosition[keyboard.orientation];
+        return (0,
+        _lodash.sortedIndexBy)(keyboard.activeKeys, {
+            startPos: mousePos
+        }, function(k) {
+            return k.startPos;
+        }) - 1;
+    }
+
+    var isPlaying = function isPlaying(state) {
+        return state.isPlaying;
+    };
+    var getCurrentTime = function getCurrentTime(state) {
+        return state.currentTime;
+    };
+    var getCurrentTick = function getCurrentTick(state) {
+        return state.currentTick;
+    };
+    var getCurrentVoices = function getCurrentVoices(state) {
+        return state.currentVoices;
+    };
+    var getKeyboards = function getKeyboards(state) {
+        return state.keyboards;
+    };
+    var getControls = function getControls(state) {
+        return state.controls;
+    };
+    var getHarmonicMode = function getHarmonicMode(state) {
+        return state.controls.harmonicMode;
+    };
+    var getTreatment = function getTreatment(state) {
+        return state.controls.treatment;
+    };
+    var getMousePosition = function getMousePosition(state) {
+        return state.mousePosition;
+    };
+    var getPatternStep = function getPatternStep(state) {
+        return state.patternStepCounter;
+    };
+    var getOutputType = function getOutputType(state) {
+        return state.controls.outputType;
+    };
+
+    var getVoicesToDisplay = (0,
+    _reselect.createSelector)(getCurrentVoices, getControls, function(voices, controls) {
+        return voices.filter(function(v) {
+            return controls.voicesOn[v.voiceId];
+        });
+    });
+
+    var getVoicesToPlay = exports.getVoicesToPlay = (0,
+    _reselect.createSelector)(getCurrentVoices, getCurrentTime, getCurrentTick, getOutputType, getTreatment, function(voices, currentTime, currentTick, outputType, treatment) {
+        var voicesToPlay = voices.filter(function(_ref5) {
+            var playOnTick = _ref5.playOnTick;
+            return playOnTick === currentTick;
+        });
+        return {
+            voices: voicesToPlay,
+            currentTime: currentTime,
+            currentTick: currentTick,
+            outputType: outputType
+        };
+    });
+
+    function updateState(actionFn) {
+        for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+            args[_key - 1] = arguments[_key];
+        }
+
+        state = actionFn.apply(undefined, [state].concat(args));
+        renderUI(state);
+    }
+
+    var Key = function() {
+        function Key() {
+            _classCallCheck(this, Key);
+
+            this.el = redom.el('div.key', [redom.el('div.top'), redom.el('div.guide'), redom.el('div.bottom')]);
+        }
+
+        _createClass(Key, [{
+            key: 'update',
+            value: function update(data) {
+                var pc = data.note.pitchClass;
+                var black = pc === 1 || pc === 3 || pc === 6 || pc === 8 || pc === 10;
+                redom.setAttr(this.el, {
+                    className: 'key ' + (black ? 'black' : '')
+                });
+            }
+        }]);
+
+        return Key;
+    }();
+
+    var PointerSurface = function() {
+        function PointerSurface() {
+            var _this4 = this;
+
+            _classCallCheck(this, PointerSurface);
+
+            this.onPointerlockChange = function() {
+                _this4.pointerLocked = _this4.isPointerLocked();
+                updateState(changePlayState, _this4.pointerLocked);
+            }
+            ;
+
+            this.onKeyDown = function(evt) {
+                if (evt.code === 'KeyC') {
+                    updateState(togglePattern);
+                } else if (evt.code === 'KeyZ') {
+                    updateState(setTransposition, _this4.controls.transposition - 3, true, _this4.currentTime);
+                } else if (evt.code === 'KeyX') {
+                    updateState(setTransposition, _this4.controls.transposition + 3, true, _this4.currentTime);
+                }
+            }
+            ;
+
+            this.el = redom.el('div.pointer-surface', [this.playButton = redom.el('button.begin-guide', {
+                textContent: 'Play'
+            })]);
+            this.el.onclick = function(e) {
+                if (!_this4.pointerLocked) {
+                    _this4.el.requestPointerLock();
+                }
+            }
+            ;
+            this.el.onmousemove = function(e) {
+                if (_this4.pointerLocked) {
+                    var deltaX = e.movementX;
+                    var deltaY = -e.movementY;
+                    updateState(moveCursor, deltaX, deltaY);
+                }
+            }
+            ;
+        }
+
+        _createClass(PointerSurface, [{
+            key: 'update',
+            value: function update(currentTime, isPlaying, controls) {
+                this.currentTime = currentTime;
+                this.isPlaying = isPlaying;
+                this.controls = controls;
+                this.playButton.style.display = isPlaying ? 'none' : 'block';
+            }
+        }, {
+            key: 'onmount',
+            value: function onmount() {
+                document.addEventListener('pointerlockchange', this.onPointerlockChange);
+                document.addEventListener('keydown', this.onKeyDown);
+            }
+        }, {
+            key: 'onunmount',
+            value: function onunmount() {
+                document.removeEventListener('pointerlockchange', this.onPointerlockChange);
+                document.removeEventListener('keydown', this.onKeyDown);
+            }
+        }, {
+            key: 'isPointerLocked',
+            value: function isPointerLocked() {
+                return this.el.ownerDocument.pointerLockElement === this.el;
+            }
+        }]);
+
+        return PointerSurface;
+    }();
+
+    var Voice = function() {
+        function Voice() {
+            _classCallCheck(this, Voice);
+
+            this.el = redom.el('div.voice');
+        }
+
+        _createClass(Voice, [{
+            key: 'update',
+            value: function update(data, index, items, context) {
+                if (data !== this.data) {
+                    var size = 100 / data.keyboardSize;
+                    var position = data.currentKey.index / data.keyboardSize * 100;
+                    redom.setAttr(this.el, {
+                        className: 'voice ' + data.keyboardOrientation
+                    });
+                    if (data.keyboardOrientation === 'horizontal') {
+                        redom.setStyle(this.el, {
+                            height: size + '%',
+                            bottom: position + '%',
+                            width: null,
+                            left: null
+                        });
+                    } else {
+                        redom.setStyle(this.el, {
+                            width: size + '%',
+                            left: position + '%',
+                            height: null,
+                            bottom: null
+                        });
+                    }
+                }
+                this.data = data;
+                if (context.voicesToPlay !== this.voicesToPlay && context.voicesToPlay.voices.length > 0 && context.voicesToPlay.voices.indexOf(data) >= 0) {
+                    this.flash(context.currentTime);
+                }
+                this.voicesToPlay = context.voicesToPlay;
+            }
+        }, {
+            key: 'flash',
+            value: function flash(currentTime) {
+                var _this5 = this;
+
+                var time = currentTime * 1000;
+                var delay = time - _tone2.default.now() * 1000;
+                setTimeout(function() {
+                    redom.setAttr(_this5.el, {
+                        className: 'voice ' + _this5.data.keyboardOrientation + ' playing'
+                    });
+                }, delay);
+                setTimeout(function() {
+                    redom.setAttr(_this5.el, {
+                        className: 'voice ' + _this5.data.keyboardOrientation
+                    });
+                }, delay + 50);
+            }
+        }]);
+
+        return Voice;
+    }();
+
+    var verticalKeyb = redom.list('div.keyboard.vertical', Key);
+    var horizontalKeyb = redom.list('div.keyboard.horizontal', Key);
+    var pointerSurface = new PointerSurface();
+    var voices = redom.list('div.voices', Voice);
+
+    function mountUI(element) {
+        var keybs = element.querySelector('.keyboards');
+        while (keybs.firstChild) {
+            keybs.firstChild.remove();
+        }
+        redom.mount(keybs, verticalKeyb);
+        redom.mount(keybs, horizontalKeyb);
+        redom.mount(keybs, pointerSurface);
+        redom.mount(pointerSurface.el, voices);
+    }
+
+    function renderUI(state) {
+        var keyboards = getKeyboards(state);
+        var _iteratorNormalCompletion = true;
+        var _didIteratorError = false;
+        var _iteratorError = undefined;
+
+        try {
+            for (var _iterator = keyboards[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                var k = _step.value;
+
+                if (k.orientation === 'horizontal') {
+                    horizontalKeyb.update(k.keys);
+                } else if (k.orientation === 'vertical') {
+                    verticalKeyb.update(k.keys);
+                }
+            }
+        } catch (err) {
+            _didIteratorError = true;
+            _iteratorError = err;
+        } finally {
+            try {
+                if (!_iteratorNormalCompletion && _iterator.return) {
+                    _iterator.return();
+                }
+            } finally {
+                if (_didIteratorError) {
+                    throw _iteratorError;
+                }
+            }
+        }
+
+        var voicesToPlay = getVoicesToPlay(state);
+        var currentTime = getCurrentTime(state);
+        voices.update(getVoicesToDisplay(state).filter(function(v) {
+            return v.currentKey;
+        }), {
+            voicesToPlay: voicesToPlay,
+            currentTime: currentTime
+        });
+        pointerSurface.update(currentTime, isPlaying(state), getControls(state), voicesToPlay);
+        playSounds(voicesToPlay);
+    }
+
+    var piano = void 0;
+    var heldNotes = new Set();
+
+    function loadPiano(dest) {
+        piano = new _tonePiano.Piano([30, 108],1,true).connect(dest);
+        piano.load('./static_assets/Salamander/');
+    }
+
+    function unloadPiano() {
+        piano.dispose();
+        heldNotes.clear();
+        piano = null;
+    }
+
+    var lastPlay = void 0;
+    function playSounds(play) {
+        if (play.voices.length > 0 && play !== lastPlay) {
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
+
+            try {
+                for (var _iterator2 = play.voices[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                    var voice = _step2.value;
+
+                    playVoice(voice, play.currentTime);
+                }
+            } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                        _iterator2.return();
+                    }
+                } finally {
+                    if (_didIteratorError2) {
+                        throw _iteratorError2;
+                    }
+                }
+            }
+
+            lastPlay = play;
+        }
+    }
+
+    function playVoice(voice, time) {
+        if (voice.currentKey) {
+            var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
+            var velocity = voice.velocity / 128;
+            if (heldNotes.has(note)) {
+                piano.keyUp(note, time);
+                heldNotes.delete(note);
+            }
+            switch (voice.articulation) {
+            case 'halfLegato':
+                var duration = new _tone.Time('16n').toSeconds();
+                piano.keyDown(note, time, velocity);
+                piano.keyUp(note, time + duration);
+                break;
+            case 'staccato':
+                piano.keyDown(note, time, velocity);
+                piano.keyUp(note, time + 0.002);
+                break;
+            case 'legato':
+                piano.keyDown(note, time, velocity);
+                heldNotes.add(note);
+                break;
+            }
+        }
+    }
+
+    /***/
+}
