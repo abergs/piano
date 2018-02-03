@@ -309,7 +309,7 @@ console.log("after");
 function loadPiano(dest) {
     console.log("Dest", dest);
     piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
-    return piano.load('/piano/');
+    return piano.load('piano/');
 }
 
 function updateState(actionFn) {
