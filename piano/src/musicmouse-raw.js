@@ -223,6 +223,7 @@ var MusicMouseSlide = exports.MusicMouseSlide = function(_Slide) {
             newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.vertical + deltaX));
         }
         var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
+        console.error(mousePositionChanged, "CHANGed");
         var mousePosition = mousePositionChanged ? {
             horizontal: newHoriz,
             vertical: newVert

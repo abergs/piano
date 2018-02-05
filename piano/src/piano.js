@@ -2,6 +2,7 @@ var Tone = require("Tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
 Tone.Transport.bpm.value = 60;
+Tone.context.latencyHint = 'playback';
 var heldNotes = new Set();
 var piano;
 
@@ -97,7 +98,6 @@ function updateVoices(state, scheduling) {
     });
 }
 function tickFn(state, currentTime, currentTick) {
-    console.error("C", currentTime);
     var scale = SCALES[state.controls.harmonicMode];
     var _state$accumulatedDel2 = state.accumulatedDelta
         , deltaX = _state$accumulatedDel2.deltaX
@@ -212,6 +212,7 @@ function anders() {
     var tick = 0;
     repeatToken = Tone.Transport.scheduleRepeat(function (time) {
         tick += 1;
+        console.log(time);
         //updateState(tick, time, _this2.tick);
         //theindex+=1;
         //console.log(state.currentTick);
@@ -221,7 +222,7 @@ function anders() {
     }, '16n');
      
 
-    Tone.Transport.start();
+    Tone.Transport.start("+0.2");
     //this.masterGain = new Tone.Gain(1.0).toMaster();
 
     function turnOn(state, isCursorsSuppressed, currentTime) {
@@ -232,34 +233,43 @@ function anders() {
     }
 
     setTimeout(() => {
-        _state.isPlaying = true;
+        //_state.isPlaying = true;
         updateState(turnOn, false, getCurrentTime(_state));
-        setInterval(() => {
-            console.log("interval", _state.pendingMousePosition);
-            var move = Math.random();
-            var range = 40;
-            var deltaX = getRandomInt(-range, range + 1);
-            var deltaY = getRandomInt(-range, range + 1);
+        // setInterval(() => {
+        //     console.log("interval", _state.pendingMousePosition);
+        //     var move = Math.random();
+        //     var range = 40;
+        //     var deltaX = getRandomInt(-range, range + 1);
+        //     var deltaY = getRandomInt(-range, range + 1);
 
-            if (_state.mousePosition.vertical < 100) {
-                deltaX = Math.abs(deltaX);
-            }
+        //     if (_state.mousePosition.vertical < 100) {
+        //         deltaX = Math.abs(deltaX);
+        //     }
 
-            if (_state.mousePosition.horizontal > 500) {
-                deltaY = -Math.abs(deltaY);
-            }
+        //     if (_state.mousePosition.horizontal > 500) {
+        //         deltaY = -Math.abs(deltaY);
+        //     }
 
-            console.log("Delta", deltaX, deltaY);
-            updateState(moveCursor, deltaX, deltaY);
-            // _state.pendingMousePosition = {
-            //     horizontal: Math.random(),
-            //     vertical: Math.random()
-            // }
-            //_state = moveCursor(_state, Math.random(), Math.random());
-            //console.log("interval", state.pendingMousePosition);
-        }, 1500);
+        //     console.log("Delta", deltaX, deltaY);
+        //     updateState(moveCursor, deltaX, deltaY);
+        //     // _state.pendingMousePosition = {
+        //     //     horizontal: Math.random(),
+        //     //     vertical: Math.random()
+        //     // }
+        //     //_state = moveCursor(_state, Math.random(), Math.random());
+        //     //console.log("interval", state.pendingMousePosition);
+        // }, 1500);
+        document.getElementById("zone").onmousemove = function (e) {
+                var deltaX = e.movementX;
+                var deltaY = -e.movementY;
+                //_state = retrigger(_state, _state.currentTime);
+                //_state.isPlaying = true;
+                updateState(moveCursor, deltaX, deltaY);
+                //_state.isPlaying = false;
+        };
     }, 2000);
 }
+
 //var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 //StartAudioContext(Tone.context, document.documentElement);
 var fakei = 0;
@@ -309,7 +319,7 @@ console.log("after");
 function loadPiano(dest) {
     console.log("Dest", dest);
     piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
-    return piano.load('piano/');
+    return piano.load('../piano/');
 }
 
 function updateState(actionFn) {
@@ -541,8 +551,9 @@ function renderUI(state) {
     // }
 
     var voicesToPlay = getVoicesToPlay(state);
+    console.log(state, voicesToPlay);
     var currentTime = getCurrentTime(state);
-    console.log("play", voicesToPlay.currentTime, currentTime);
+    //console.log("play", voicesToPlay.currentTime, currentTime);
     // requestAnimationFrame(() => {
     //     var el = document.getElementById("note");
     //     el.innerText = JSON.stringify(state.currentVoices);
