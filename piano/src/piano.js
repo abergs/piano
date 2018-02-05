@@ -1,7 +1,7 @@
 var Tone = require("Tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
-Tone.Transport.bpm.value = 60;
+Tone.Transport.bpm.value = 120;
 Tone.context.latencyHint = 'playback';
 var heldNotes = new Set();
 var piano;
@@ -212,7 +212,7 @@ function anders() {
     var tick = 0;
     repeatToken = Tone.Transport.scheduleRepeat(function (time) {
         tick += 1;
-        console.log(time);
+        //console.log("repeattoken", time, tick);
         //updateState(tick, time, _this2.tick);
         //theindex+=1;
         //console.log(state.currentTick);
@@ -222,7 +222,7 @@ function anders() {
     }, '16n');
      
 
-    Tone.Transport.start("+0.2");
+    Tone.Transport.start("+0.1");
     //this.masterGain = new Tone.Gain(1.0).toMaster();
 
     function turnOn(state, isCursorsSuppressed, currentTime) {
@@ -233,7 +233,7 @@ function anders() {
     }
 
     setTimeout(() => {
-        //_state.isPlaying = true;
+        _state.isPlaying = true;
         updateState(turnOn, false, getCurrentTime(_state));
         // setInterval(() => {
         //     console.log("interval", _state.pendingMousePosition);
@@ -551,7 +551,7 @@ function renderUI(state) {
     // }
 
     var voicesToPlay = getVoicesToPlay(state);
-    console.log(state, voicesToPlay);
+    //console.log(state, voicesToPlay);
     var currentTime = getCurrentTime(state);
     //console.log("play", voicesToPlay.currentTime, currentTime);
     // requestAnimationFrame(() => {
@@ -601,7 +601,9 @@ function playSounds(play) {
 
     if (play.voices.length > 0 && play !== lastPlay) {
         //console.log("playsounds2");
-
+        if(play.currentTime <= Tone.now()) {
+            console.error("time is in Past")
+        }
         play.voices.forEach(function (voice) {
             playVoice(voice, play.currentTime);
         }, this);
