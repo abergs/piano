@@ -2,7 +2,7 @@ var Tone = require("Tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
 Tone.Transport.bpm.value = 120;
-Tone.context.latencyHint = 'playback';
+Tone.context.latencyHint = "playback";
 var heldNotes = new Set();
 var piano;
 
@@ -211,7 +211,7 @@ function anders() {
     //state = setActiveKeys(Object.assign({}, state));
     var tick = 0;
     repeatToken = Tone.Transport.scheduleRepeat(function (time) {
-        tick += 1;
+        tick++;
         //console.log("repeattoken", time, tick);
         //updateState(tick, time, _this2.tick);
         //theindex+=1;
@@ -602,11 +602,23 @@ function playSounds(play) {
     if (play.voices.length > 0 && play !== lastPlay) {
         //console.log("playsounds2");
         if(play.currentTime <= Tone.now()) {
-            console.error("time is in Past")
+            console.error("time is in Past");
+            return;
+
         }
         play.voices.forEach(function (voice) {
+            Tone.Draw.schedule(function(){
+                var el = document.getElementById("zone");
+                if(voice.currentKey){
+                var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
+                //el.innerText += ", " + note;
+            }
+
+            }, play.currentTime)
             playVoice(voice, play.currentTime);
         }, this);
+
+        
 
         lastPlay = play;
     }
