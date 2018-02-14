@@ -1,10 +1,16 @@
 var Tone = require("Tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
-Tone.Transport.bpm.value = 120;
+Tone.Transport.bpm.value = 60;
 Tone.context.latencyHint = "playback";
 var heldNotes = new Set();
 var piano;
+
+
+
+
+
+console.log("HEEELO");
 
 // var state = {
 //     keyboards: [makeKeyboard(50, 3, 5, 'vertical',[1]), makeKeyboard(50, 3, 9, 'horizontal',[2,3,4])],
@@ -104,11 +110,14 @@ function tickFn(state, currentTime, currentTick) {
         , deltaY = _state$accumulatedDel2.deltaY;
 
     var pendingPos = state.pendingMousePosition;
+    //console.log("pending", pendingPos);
     var newHoriz = void 0
         , newVert = void 0;
     if (pendingPos) {
-        newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
-        newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        //newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
+        //newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.horizontal));
+        newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.vertical));
     } else {
         newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.horizontal + deltaY));
         newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.vertical + deltaX));
@@ -118,7 +127,7 @@ function tickFn(state, currentTime, currentTick) {
         horizontal: newHoriz,
         vertical: newVert
     } : state.mousePosition;
-    //console.log(mousePosition);
+    //console.warn("POS", mousePosition);
     var patternStepCounter =
         state.isPlaying &&
             state.controls.patternOn &&
@@ -232,6 +241,15 @@ function anders() {
         return retrigger(newState, currentTime);
     }
 
+    function moveCursor2(state, x,y) {
+        return Object.assign({}, state, {
+            pendingMousePosition: {
+                horizontal: x,
+                vertical: y
+            }
+        });
+    }
+
     setTimeout(() => {
         _state.isPlaying = true;
         updateState(turnOn, false, getCurrentTime(_state));
@@ -262,12 +280,15 @@ function anders() {
         document.getElementById("zone").onmousemove = function (e) {
                 var deltaX = e.movementX;
                 var deltaY = -e.movementY;
+                //console.log(e);
                 //_state = retrigger(_state, _state.currentTime);
                 //_state.isPlaying = true;
-                updateState(moveCursor, deltaX, deltaY);
+                //console.log("mouse", deltaX, deltaY);
+                
+                updateState(moveCursor2, e.x, e.y);
                 //_state.isPlaying = false;
         };
-    }, 2000);
+    }, 1);
 }
 
 //var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -519,6 +540,7 @@ var getVoicesToDisplay = function (voices, controls) {
     });
 }
 
+var mousedot = document.getElementById("mousedot");
 function renderUI(state) {
     //var keyboards = getKeyboards(state);
     //var _iteratorNormalCompletion = true;
@@ -567,6 +589,29 @@ function renderUI(state) {
     //     });
     //pointerSurface.update(currentTime, isPlaying(state), getControls(state), voicesToPlay);
     //console.log(voicesToPlay);
+
+    var s = "";
+    voicesToPlay.voices.forEach(function(voice) {
+        if(voice.currentKey) {
+        s += voice.currentKey.index;
+        }
+    }, this);
+    console.log(s, lastPlay);
+    if(s == lastPlay) {
+        console.info("SKIPP");
+        return;
+    }
+    lastPlay = s;
+
+    //console.warn(state.currentTime);
+    Tone.Draw.schedule(function(){
+
+        //console.warn("DRAW", state.mousePosition);
+        //do drawing or DOM manipulation here
+        mousedot.style.left = state.mousePosition.horizontal+'px';
+        mousedot.style.top = state.mousePosition.vertical+'px';
+    }, state.currentTime);
+    console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
 
@@ -599,7 +644,18 @@ var lastPlay = null;
 function playSounds(play) {
     //console.log("playsounds");
 
-    if (play.voices.length > 0 && play !== lastPlay) {
+    if (play.voices.length > 0 ) {
+        
+        // var s = "";
+        // play.voices.forEach(function(voice) {
+        //     s += voice.currentKey.index;
+        // }, this);
+        // console.log(s, lastPlay);
+        // if(s == lastPlay) {
+        //     console.info("SKIPP");
+        //     return;
+        // }
+        
         //console.log("playsounds2");
         if(play.currentTime <= Tone.now()) {
             console.error("time is in Past");
@@ -607,20 +663,22 @@ function playSounds(play) {
 
         }
         play.voices.forEach(function (voice) {
-            Tone.Draw.schedule(function(){
-                var el = document.getElementById("zone");
-                if(voice.currentKey){
-                var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
-                //el.innerText += ", " + note;
-            }
+            // Tone.Draw.schedule(function(){
+            //     var el = document.getElementById("zone");
+            //     if(voice.currentKey){
+            //     var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
+            //     //el.innerText += ", " + note;
+            // }
 
-            }, play.currentTime)
+            // }, play.currentTime)
             playVoice(voice, play.currentTime);
         }, this);
 
         
 
-        lastPlay = play;
+        //lastPlay = s;
+    }else {
+        //console.info("XX", lastPlay, play);
     }
 }
 
