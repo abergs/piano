@@ -1,10 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-    
+    <style>
+        #mousedot, .mousedot {
+            border-radius:100%;
+            background:yellow;
+            width:5px;
+            height:5px;
+            position:absolute;
+            animation: fadeout 10s 1;
+            animation-fill-mode: forwards;
+
+        }
+
+        @keyframes fadeout {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity:0;
+            }            
+        }
+    </style>
 </head>
 <body>
-    <div id="note"></div>
-    <script src="build/main.js"></script>
+    <div id="note"></div>    
+    <div id="zone" style="width:600px;height:600px; background: green; position:relative;">
+        <div id="mousedot"></div>
+    </div>
+    <script src="../build/main.js"></script>
 </body>
 </html>

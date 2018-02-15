@@ -1,9 +1,15 @@
-var Tone = require("Tone");
+var Tone = require("tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
+var StartAudioContext = require("startaudiocontext");
+
 Tone.Transport.bpm.value = 60;
+Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
+StartAudioContext(Tone.context).then(function () {
+    console.log("Started");
+});
 
 // var state = {
 //     keyboards: [makeKeyboard(50, 3, 5, 'vertical',[1]), makeKeyboard(50, 3, 9, 'horizontal',[2,3,4])],
@@ -97,18 +103,20 @@ function updateVoices(state, scheduling) {
     });
 }
 function tickFn(state, currentTime, currentTick) {
-    console.error("C", currentTime);
     var scale = SCALES[state.controls.harmonicMode];
     var _state$accumulatedDel2 = state.accumulatedDelta
         , deltaX = _state$accumulatedDel2.deltaX
         , deltaY = _state$accumulatedDel2.deltaY;
 
     var pendingPos = state.pendingMousePosition;
+    //console.log("pending", pendingPos);
     var newHoriz = void 0
         , newVert = void 0;
     if (pendingPos) {
-        newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
-        newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        //newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
+        //newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.horizontal));
+        newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.vertical));
     } else {
         newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.horizontal + deltaY));
         newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.vertical + deltaX));
@@ -118,7 +126,7 @@ function tickFn(state, currentTime, currentTick) {
         horizontal: newHoriz,
         vertical: newVert
     } : state.mousePosition;
-    //console.log(mousePosition);
+    //console.warn("POS", mousePosition);
     var patternStepCounter =
         state.isPlaying &&
             state.controls.patternOn &&
@@ -205,13 +213,14 @@ var _state = setVoicing(setHarmonicMode({
 //window.state = state;
 
 let repeatToken;
-let compressor =  new Tone.Gain(1.0).toMaster();
+let compressor = new Tone.Gain(1.0).toMaster();
 function anders() {
     //var activeKeys = setActiveKeys(state);
     //state = setActiveKeys(Object.assign({}, state));
     var tick = 0;
     repeatToken = Tone.Transport.scheduleRepeat(function (time) {
-        tick += 1;
+        tick++;
+        //console.log("repeattoken", time, tick);
         //updateState(tick, time, _this2.tick);
         //theindex+=1;
         //console.log(state.currentTick);
@@ -219,47 +228,180 @@ function anders() {
         updateState(tickFn, time, tick);
 
     }, '16n');
-     
 
-    Tone.Transport.start();
+
+    Tone.Transport.start("+0.5");
     //this.masterGain = new Tone.Gain(1.0).toMaster();
 
     function turnOn(state, isCursorsSuppressed, currentTime) {
         var newState = Object.assign({}, state, {
             isCursorsSuppressed: isCursorsSuppressed
         });
-        return retrigger(newState, currentTime);
+        return newState;
+        //return retrigger(newState, currentTime);
+    }
+
+    function moveCursor2(state, x, y) {
+        return Object.assign({}, state, {
+            pendingMousePosition: {
+                horizontal: x,
+                vertical: y
+            }
+        });
+    }
+
+    // function test() {
+    //     var currentPos = { horizonta: 0, vertical: 0 };
+
+    //     var grid = { horizontal: 500, vertical: 500 };
+    //     var target = { horizontal: 100, vertical: 100 };
+    //     var movement = getMovement(target, currentPos, grid);
+
+    //     var location = getNewLocation(movement, currentPos, grid);
+    // }
+
+    function getNewLocation(movement, currentPos, grid) {
+
+        // get new location using boundary check
+        return {
+            horizontal: Math.max(0, Math.min(grid.horizontal - 1,
+                currentPos.horizontal + movement.horizontal)),
+            vertical: Math.max(0, Math.min(grid.horizontal - 1,
+                currentPos.vertical + movement.vertical))
+        };
+    }
+
+    function diff(x, y) {
+        return Math.abs(x - y);
+    }
+
+    function getMovement(target, currentPos, grid) {
+
+        //console.log("target", target);
+        // go up or down or stay still?
+        var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
+
+        // go right left or stay still
+        var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
+
+        var FACTOR = 20;
+
+        var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal
+        var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
+        //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
+        // Get delta with FACTOR and boundary check within grid
+        var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
+
+        var deltaVertical = verticalMovement * FACTOR * dynamicFactorVertical;
+
+        var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
+        return result;
+    }
+
+    function getOneDirection(target, currentPos, grid) {
+        if (target > currentPos) {
+            return 1;
+        } else if (target < currentPos) {
+            return -1;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    (function loop() {
+        var rand = Math.round(Math.random() * (600 - 100)) + 100;
+
+        //console.log("sleep", rand);
+        setTimeout(function () {
+            ofCourseIStillLoveYou(rand);
+            loop();
+        }, rand);
+    }());
+
+    var target;
+    function ofCourseIStillLoveYou(sleep) {
+        var grid = { horizontal: 600, vertical: 600 };
+        var currentPos = _state.mousePosition;
+        //console.log("currentPos", currentPos);
+        console.log("sleep", sleep);
+        if (!target || sleep > 300) {
+            target = {
+                horizontal: grid.horizontal * Math.random(),
+                vertical: grid.vertical * Math.random()
+            };
+        }
+        console.log(target);
+        var movement = getMovement(target, currentPos, grid);
+        //console.log("movement", movement);
+        var newLocation = getNewLocation(movement, currentPos, grid);
+        var safeLocation = getSmoothLocation(target, newLocation, movement);
+        //console.log("new location", newLocation, safeLocation);
+        updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
+    }
+
+    function getSmoothLocation(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var location = {
+            horizontal: smoothValue(target.horizontal, newLocation.horizontal, movement.horizontal),
+            vertical: smoothValue(target.vertical, newLocation.vertical, movement.vertical)
+        };
+
+        return location;
+    }
+
+    function smoothValue(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var diff = Math.abs(target - newLocation);
+        // close enough
+        if (diff < Math.abs(movement)) {
+            return target;
+        }
+        // just original propsal
+        return newLocation;
     }
 
     setTimeout(() => {
         _state.isPlaying = true;
         updateState(turnOn, false, getCurrentTime(_state));
-        setInterval(() => {
-            console.log("interval", _state.pendingMousePosition);
-            var move = Math.random();
-            var range = 40;
-            var deltaX = getRandomInt(-range, range + 1);
-            var deltaY = getRandomInt(-range, range + 1);
+        // setInterval(() => {
+        //     console.log("interval", _state.pendingMousePosition);
+        //     var move = Math.random();
+        //     var range = 40;
+        //     var deltaX = getRandomInt(-range, range + 1);
+        //     var deltaY = getRandomInt(-range, range + 1);
 
-            if (_state.mousePosition.vertical < 100) {
-                deltaX = Math.abs(deltaX);
-            }
+        //     if (_state.mousePosition.vertical < 100) {
+        //         deltaX = Math.abs(deltaX);
+        //     }
 
-            if (_state.mousePosition.horizontal > 500) {
-                deltaY = -Math.abs(deltaY);
-            }
+        //     if (_state.mousePosition.horizontal > 500) {
+        //         deltaY = -Math.abs(deltaY);
+        //     }
 
-            console.log("Delta", deltaX, deltaY);
-            updateState(moveCursor, deltaX, deltaY);
-            // _state.pendingMousePosition = {
-            //     horizontal: Math.random(),
-            //     vertical: Math.random()
-            // }
-            //_state = moveCursor(_state, Math.random(), Math.random());
-            //console.log("interval", state.pendingMousePosition);
-        }, 1500);
-    }, 2000);
+        //     console.log("Delta", deltaX, deltaY);
+        //     updateState(moveCursor, deltaX, deltaY);
+        //     // _state.pendingMousePosition = {
+        //     //     horizontal: Math.random(),
+        //     //     vertical: Math.random()
+        //     // }
+        //     //_state = moveCursor(_state, Math.random(), Math.random());
+        //     //console.log("interval", state.pendingMousePosition);
+        // }, 1500);
+        document.getElementById("zone").onmousemove = function (e) {
+            var deltaX = e.movementX;
+            var deltaY = -e.movementY;
+            //console.log(e);
+            //_state = retrigger(_state, _state.currentTime);
+            //_state.isPlaying = true;
+            //console.log("mouse", deltaX, deltaY);
+
+            updateState(moveCursor2, e.x, e.y);
+            //_state.isPlaying = false;
+        };
+    }, 1);
 }
+
 //var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 //StartAudioContext(Tone.context, document.documentElement);
 var fakei = 0;
@@ -293,7 +435,6 @@ loadPiano(compressor).then(() => {
     console.log("piano loaded");
     anders();
 });
-console.log("after");
 
 
 //  function start(element) {
@@ -307,9 +448,8 @@ console.log("after");
 // }
 
 function loadPiano(dest) {
-    console.log("Dest", dest);
     piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
-    return piano.load('piano/');
+    return piano.load('../piano/');
 }
 
 function updateState(actionFn) {
@@ -427,7 +567,7 @@ function getUpdatedVoices(state, time, scheduling) {
     var tickMapping = getTickMapping(changedKeys.map(function (k) {
         return k.voiceId;
     }), state.currentTick, state.controls.treatment, scheduling, state.controls.patternOn);
-    
+
     return changedKeys.map(function (_ref, index) {
         var voiceId = _ref.voiceId
             , keyboard = _ref.keyboard
@@ -509,55 +649,56 @@ var getVoicesToDisplay = function (voices, controls) {
     });
 }
 
+var mousedot = document.getElementById("mousedot");
+var counter = 0;
 function renderUI(state) {
-    //var keyboards = getKeyboards(state);
-    //var _iteratorNormalCompletion = true;
-    //var _didIteratorError = false;
-    //var _iteratorError = undefined;
 
-    // try {
-    //     for (var _iterator = keyboards[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-    //         var k = _step.value;
-
-    //         if (k.orientation === 'horizontal') {
-    //             horizontalKeyb.update(k.keys);
-    //         } else if (k.orientation === 'vertical') {
-    //             verticalKeyb.update(k.keys);
-    //         }
-    //     }
-    // } catch (err) {
-    //     _didIteratorError = true;
-    //     _iteratorError = err;
-    // } finally {
-    //     try {
-    //         if (!_iteratorNormalCompletion && _iterator.return) {
-    //             _iterator.return();
-    //         }
-    //     } finally {
-    //         if (_didIteratorError) {
-    //             throw _iteratorError;
-    //         }
-    //     }
-    // }
 
     var voicesToPlay = getVoicesToPlay(state);
+    //console.log(state, voicesToPlay);
     var currentTime = getCurrentTime(state);
-    console.log("play", voicesToPlay.currentTime, currentTime);
-    // requestAnimationFrame(() => {
-    //     var el = document.getElementById("note");
-    //     el.innerText = JSON.stringify(state.currentVoices);
-    // });
 
-    // voices.update(getVoicesToDisplay(state).filter(function (v) {
-    //     return v.currentKey;
-    // }), {
-    //         voicesToPlay: voicesToPlay,
-    //         currentTime: currentTime
-    //     });
-    //pointerSurface.update(currentTime, isPlaying(state), getControls(state), voicesToPlay);
+    var s = "";
+    voicesToPlay.voices.forEach(function (voice) {
+        if (voice.currentKey) {
+            s += voice.currentKey.index;
+        }
+    }, this);
+    //console.log(s, lastPlay);
+    if (s == lastPlay) {
+        return;
+    }
+    lastPlay = s;
+
+    voicesToPlay.currentTime += 0.1;
+
+    //console.warn(state.currentTime);
+    Tone.Draw.schedule(function () {
+
+        //console.warn("DRAW", state.mousePosition);
+        //do drawing or DOM manipulation here
+        var el = getStar();
+        el.style.left = state.mousePosition.horizontal + 'px';
+        el.style.top = state.mousePosition.vertical + 'px';
+        if (els.length > 30) {
+            var old = els.shift();
+            zone.removeChild(old);
+        }
+
+    }, voicesToPlay.currentTime);
     //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
+
+var zone = document.getElementById("zone");
+function getStar() {
+    var d = document.createElement("div")
+    d.className = "mousedot";
+    zone.appendChild(d);
+    els.push(d);
+    return d;
+}
+var els = [];
 
 //50,3,9 horizontal
 //50,3,5 vertical
@@ -588,14 +729,42 @@ var lastPlay = null;
 function playSounds(play) {
     //console.log("playsounds");
 
-    if (play.voices.length > 0 && play !== lastPlay) {
-        //console.log("playsounds2");
+    if (play.voices.length > 0) {
 
+        // var s = "";
+        // play.voices.forEach(function(voice) {
+        //     s += voice.currentKey.index;
+        // }, this);
+        // console.log(s, lastPlay);
+        // if(s == lastPlay) {
+        //     console.info("SKIPP");
+        //     return;
+        // }
+
+        //console.log("playsounds2");
+        var now = Tone.now();
+        if (play.currentTime <= now) {
+            console.error("time is in Past", play.currentTime, "vs", now);
+            return;
+
+        }
         play.voices.forEach(function (voice) {
+            // Tone.Draw.schedule(function(){
+            //     var el = document.getElementById("zone");
+            //     if(voice.currentKey){
+            //     var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
+            //     //el.innerText += ", " + note;
+            // }
+
+            // }, play.currentTime)
             playVoice(voice, play.currentTime);
         }, this);
 
-        lastPlay = play;
+
+
+        //lastPlay = s;
+    } else {
+        //console.info("XX", lastPlay, play);
     }
 }
 

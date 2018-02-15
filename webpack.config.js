@@ -5,7 +5,7 @@ const path = require('path');
 
 module.exports = [{
 	context: __dirname,
-	entry: "./src/piano.js",
+	entry: "./piano/src/piano.js",
 	output: {
 		filename: './build/[name].js',
 		chunkFilename: './build/[id].js',

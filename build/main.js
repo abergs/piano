@@ -75,9 +75,15 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 var Tone = __webpack_require__(1);
 var TonePiano = __webpack_require__(2);
 var lodash = __webpack_require__(4);
+var StartAudioContext = __webpack_require__(7);
+
 Tone.Transport.bpm.value = 60;
+Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
+StartAudioContext(Tone.context).then(function () {
+    console.log("Started");
+});
 
 // var state = {
 //     keyboards: [makeKeyboard(50, 3, 5, 'vertical',[1]), makeKeyboard(50, 3, 9, 'horizontal',[2,3,4])],
@@ -171,18 +177,20 @@ function updateVoices(state, scheduling) {
     });
 }
 function tickFn(state, currentTime, currentTick) {
-    console.error("C", currentTime);
     var scale = SCALES[state.controls.harmonicMode];
     var _state$accumulatedDel2 = state.accumulatedDelta,
         deltaX = _state$accumulatedDel2.deltaX,
         deltaY = _state$accumulatedDel2.deltaY;
 
     var pendingPos = state.pendingMousePosition;
+    //console.log("pending", pendingPos);
     var newHoriz = void 0,
         newVert = void 0;
     if (pendingPos) {
-        newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
-        newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        //newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
+        //newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
+        newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.horizontal));
+        newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.vertical));
     } else {
         newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.horizontal + deltaY));
         newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.vertical + deltaX));
@@ -192,7 +200,7 @@ function tickFn(state, currentTime, currentTick) {
         horizontal: newHoriz,
         vertical: newVert
     } : state.mousePosition;
-    //console.log(mousePosition);
+    //console.warn("POS", mousePosition);
     var patternStepCounter = state.isPlaying && state.controls.patternOn && !mousePositionChanged && Math.max.apply(Math, [].concat(_toConsumableArray(state.currentVoices.map(function (v) {
         return v.playOnTick;
     })))) - currentTick < 0 ? state.patternStepCounter + 1 : state.patternStepCounter;
@@ -280,7 +288,8 @@ function anders() {
     //state = setActiveKeys(Object.assign({}, state));
     var tick = 0;
     repeatToken = Tone.Transport.scheduleRepeat(function (time) {
-        tick += 1;
+        tick++;
+        //console.log("repeattoken", time, tick);
         //updateState(tick, time, _this2.tick);
         //theindex+=1;
         //console.log(state.currentTick);
@@ -288,45 +297,175 @@ function anders() {
         updateState(tickFn, time, tick);
     }, '16n');
 
-    Tone.Transport.start();
+    Tone.Transport.start("+0.5");
     //this.masterGain = new Tone.Gain(1.0).toMaster();
 
     function turnOn(state, isCursorsSuppressed, currentTime) {
         var newState = Object.assign({}, state, {
             isCursorsSuppressed: isCursorsSuppressed
         });
-        return retrigger(newState, currentTime);
+        return newState;
+        //return retrigger(newState, currentTime);
+    }
+
+    function moveCursor2(state, x, y) {
+        return Object.assign({}, state, {
+            pendingMousePosition: {
+                horizontal: x,
+                vertical: y
+            }
+        });
+    }
+
+    // function test() {
+    //     var currentPos = { horizonta: 0, vertical: 0 };
+
+    //     var grid = { horizontal: 500, vertical: 500 };
+    //     var target = { horizontal: 100, vertical: 100 };
+    //     var movement = getMovement(target, currentPos, grid);
+
+    //     var location = getNewLocation(movement, currentPos, grid);
+    // }
+
+    function getNewLocation(movement, currentPos, grid) {
+
+        // get new location using boundary check
+        return {
+            horizontal: Math.max(0, Math.min(grid.horizontal - 1, currentPos.horizontal + movement.horizontal)),
+            vertical: Math.max(0, Math.min(grid.horizontal - 1, currentPos.vertical + movement.vertical))
+        };
+    }
+
+    function diff(x, y) {
+        return Math.abs(x - y);
+    }
+
+    function getMovement(target, currentPos, grid) {
+
+        //console.log("target", target);
+        // go up or down or stay still?
+        var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
+
+        // go right left or stay still
+        var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
+
+        var FACTOR = 20;
+
+        var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal;
+        var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
+        //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
+        // Get delta with FACTOR and boundary check within grid
+        var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
+
+        var deltaVertical = verticalMovement * FACTOR * dynamicFactorVertical;
+
+        var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
+        return result;
+    }
+
+    function getOneDirection(target, currentPos, grid) {
+        if (target > currentPos) {
+            return 1;
+        } else if (target < currentPos) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    (function loop() {
+        var rand = Math.round(Math.random() * (600 - 100)) + 100;
+
+        //console.log("sleep", rand);
+        setTimeout(function () {
+            ofCourseIStillLoveYou(rand);
+            loop();
+        }, rand);
+    })();
+
+    var target;
+    function ofCourseIStillLoveYou(sleep) {
+        var grid = { horizontal: 600, vertical: 600 };
+        var currentPos = _state.mousePosition;
+        //console.log("currentPos", currentPos);
+        console.log("sleep", sleep);
+        if (!target || sleep > 300) {
+            target = {
+                horizontal: grid.horizontal * Math.random(),
+                vertical: grid.vertical * Math.random()
+            };
+        }
+        console.log(target);
+        var movement = getMovement(target, currentPos, grid);
+        //console.log("movement", movement);
+        var newLocation = getNewLocation(movement, currentPos, grid);
+        var safeLocation = getSmoothLocation(target, newLocation, movement);
+        //console.log("new location", newLocation, safeLocation);
+        updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
+    }
+
+    function getSmoothLocation(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var location = {
+            horizontal: smoothValue(target.horizontal, newLocation.horizontal, movement.horizontal),
+            vertical: smoothValue(target.vertical, newLocation.vertical, movement.vertical)
+        };
+
+        return location;
+    }
+
+    function smoothValue(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var diff = Math.abs(target - newLocation);
+        // close enough
+        if (diff < Math.abs(movement)) {
+            return target;
+        }
+        // just original propsal
+        return newLocation;
     }
 
     setTimeout(function () {
         _state.isPlaying = true;
         updateState(turnOn, false, getCurrentTime(_state));
-        setInterval(function () {
-            console.log("interval", _state.pendingMousePosition);
-            var move = Math.random();
-            var range = 40;
-            var deltaX = getRandomInt(-range, range + 1);
-            var deltaY = getRandomInt(-range, range + 1);
+        // setInterval(() => {
+        //     console.log("interval", _state.pendingMousePosition);
+        //     var move = Math.random();
+        //     var range = 40;
+        //     var deltaX = getRandomInt(-range, range + 1);
+        //     var deltaY = getRandomInt(-range, range + 1);
 
-            if (_state.mousePosition.vertical < 100) {
-                deltaX = Math.abs(deltaX);
-            }
+        //     if (_state.mousePosition.vertical < 100) {
+        //         deltaX = Math.abs(deltaX);
+        //     }
 
-            if (_state.mousePosition.horizontal > 500) {
-                deltaY = -Math.abs(deltaY);
-            }
+        //     if (_state.mousePosition.horizontal > 500) {
+        //         deltaY = -Math.abs(deltaY);
+        //     }
 
-            console.log("Delta", deltaX, deltaY);
-            updateState(moveCursor, deltaX, deltaY);
-            // _state.pendingMousePosition = {
-            //     horizontal: Math.random(),
-            //     vertical: Math.random()
-            // }
-            //_state = moveCursor(_state, Math.random(), Math.random());
-            //console.log("interval", state.pendingMousePosition);
-        }, 1500);
-    }, 2000);
+        //     console.log("Delta", deltaX, deltaY);
+        //     updateState(moveCursor, deltaX, deltaY);
+        //     // _state.pendingMousePosition = {
+        //     //     horizontal: Math.random(),
+        //     //     vertical: Math.random()
+        //     // }
+        //     //_state = moveCursor(_state, Math.random(), Math.random());
+        //     //console.log("interval", state.pendingMousePosition);
+        // }, 1500);
+        document.getElementById("zone").onmousemove = function (e) {
+            var deltaX = e.movementX;
+            var deltaY = -e.movementY;
+            //console.log(e);
+            //_state = retrigger(_state, _state.currentTime);
+            //_state.isPlaying = true;
+            //console.log("mouse", deltaX, deltaY);
+
+            updateState(moveCursor2, e.x, e.y);
+            //_state.isPlaying = false;
+        };
+    }, 1);
 }
+
 //var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 //StartAudioContext(Tone.context, document.documentElement);
 var fakei = 0;
@@ -360,7 +499,6 @@ loadPiano(compressor).then(function () {
     console.log("piano loaded");
     anders();
 });
-console.log("after");
 
 //  function start(element) {
 //     masterGain = new Tone.Gain(1.0).toMaster();
@@ -373,9 +511,8 @@ console.log("after");
 // }
 
 function loadPiano(dest) {
-    console.log("Dest", dest);
     piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
-    return piano.load('piano/');
+    return piano.load('../piano/');
 }
 
 function updateState(actionFn) {
@@ -575,55 +712,54 @@ var getVoicesToDisplay = function getVoicesToDisplay(voices, controls) {
     });
 };
 
+var mousedot = document.getElementById("mousedot");
+var counter = 0;
 function renderUI(state) {
-    //var keyboards = getKeyboards(state);
-    //var _iteratorNormalCompletion = true;
-    //var _didIteratorError = false;
-    //var _iteratorError = undefined;
-
-    // try {
-    //     for (var _iterator = keyboards[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-    //         var k = _step.value;
-
-    //         if (k.orientation === 'horizontal') {
-    //             horizontalKeyb.update(k.keys);
-    //         } else if (k.orientation === 'vertical') {
-    //             verticalKeyb.update(k.keys);
-    //         }
-    //     }
-    // } catch (err) {
-    //     _didIteratorError = true;
-    //     _iteratorError = err;
-    // } finally {
-    //     try {
-    //         if (!_iteratorNormalCompletion && _iterator.return) {
-    //             _iterator.return();
-    //         }
-    //     } finally {
-    //         if (_didIteratorError) {
-    //             throw _iteratorError;
-    //         }
-    //     }
-    // }
 
     var voicesToPlay = getVoicesToPlay(state);
+    //console.log(state, voicesToPlay);
     var currentTime = getCurrentTime(state);
-    console.log("play", voicesToPlay.currentTime, currentTime);
-    // requestAnimationFrame(() => {
-    //     var el = document.getElementById("note");
-    //     el.innerText = JSON.stringify(state.currentVoices);
-    // });
 
-    // voices.update(getVoicesToDisplay(state).filter(function (v) {
-    //     return v.currentKey;
-    // }), {
-    //         voicesToPlay: voicesToPlay,
-    //         currentTime: currentTime
-    //     });
-    //pointerSurface.update(currentTime, isPlaying(state), getControls(state), voicesToPlay);
+    var s = "";
+    voicesToPlay.voices.forEach(function (voice) {
+        if (voice.currentKey) {
+            s += voice.currentKey.index;
+        }
+    }, this);
+    //console.log(s, lastPlay);
+    if (s == lastPlay) {
+        return;
+    }
+    lastPlay = s;
+
+    voicesToPlay.currentTime += 0.1;
+
+    //console.warn(state.currentTime);
+    Tone.Draw.schedule(function () {
+
+        //console.warn("DRAW", state.mousePosition);
+        //do drawing or DOM manipulation here
+        var el = getStar();
+        el.style.left = state.mousePosition.horizontal + 'px';
+        el.style.top = state.mousePosition.vertical + 'px';
+        if (els.length > 30) {
+            var old = els.shift();
+            zone.removeChild(old);
+        }
+    }, voicesToPlay.currentTime);
     //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
+
+var zone = document.getElementById("zone");
+function getStar() {
+    var d = document.createElement("div");
+    d.className = "mousedot";
+    zone.appendChild(d);
+    els.push(d);
+    return d;
+}
+var els = [];
 
 //50,3,9 horizontal
 //50,3,5 vertical
@@ -653,15 +789,40 @@ var lastPlay = null;
 function playSounds(play) {
     //console.log("playsounds");
 
-    if (play.voices.length > 0 && play !== lastPlay) {
-        //console.log("playsounds2");
+    if (play.voices.length > 0) {
 
+        // var s = "";
+        // play.voices.forEach(function(voice) {
+        //     s += voice.currentKey.index;
+        // }, this);
+        // console.log(s, lastPlay);
+        // if(s == lastPlay) {
+        //     console.info("SKIPP");
+        //     return;
+        // }
+
+        //console.log("playsounds2");
+        var now = Tone.now();
+        if (play.currentTime <= now) {
+            console.error("time is in Past", play.currentTime, "vs", now);
+            return;
+        }
         play.voices.forEach(function (voice) {
+            // Tone.Draw.schedule(function(){
+            //     var el = document.getElementById("zone");
+            //     if(voice.currentKey){
+            //     var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
+            //     //el.innerText += ", " + note;
+            // }
+
+            // }, play.currentTime)
             playVoice(voice, play.currentTime);
         }, this);
 
-        lastPlay = play;
-    }
+        //lastPlay = s;
+    } else {
+            //console.info("XX", lastPlay, play);
+        }
 }
 
 var isPlaying = function isPlaying(state) {
@@ -47627,7 +47788,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.4';
+  var VERSION = '4.17.5';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
@@ -47758,7 +47919,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
   /** Used to match property names within property paths. */
   var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
       reIsPlainProp = /^\w*$/,
-      reLeadingDot = /^\./,
       rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
 
   /**
@@ -47858,8 +48018,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
       reOptMod = rsModifier + '?',
       rsOptVar = '[' + rsVarRange + ']?',
       rsOptJoin = '(?:' + rsZWJ + '(?:' + [rsNonAstral, rsRegional, rsSurrPair].join('|') + ')' + rsOptVar + reOptMod + ')*',
-      rsOrdLower = '\\d*(?:(?:1st|2nd|3rd|(?![123])\\dth)\\b)',
-      rsOrdUpper = '\\d*(?:(?:1ST|2ND|3RD|(?![123])\\dTH)\\b)',
+      rsOrdLower = '\\d*(?:1st|2nd|3rd|(?![123])\\dth)(?=\\b|[A-Z_])',
+      rsOrdUpper = '\\d*(?:1ST|2ND|3RD|(?![123])\\dTH)(?=\\b|[a-z_])',
       rsSeq = rsOptVar + reOptMod + rsOptJoin,
       rsEmoji = '(?:' + [rsDingbat, rsRegional, rsSurrPair].join('|') + ')' + rsSeq,
       rsSymbol = '(?:' + [rsNonAstral + rsCombo + '?', rsCombo, rsRegional, rsSurrPair, rsAstral].join('|') + ')';
@@ -48065,34 +48225,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
       nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
 
   /*--------------------------------------------------------------------------*/
-
-  /**
-   * Adds the key-value `pair` to `map`.
-   *
-   * @private
-   * @param {Object} map The map to modify.
-   * @param {Array} pair The key-value pair to add.
-   * @returns {Object} Returns `map`.
-   */
-  function addMapEntry(map, pair) {
-    // Don't return `map.set` because it's not chainable in IE 11.
-    map.set(pair[0], pair[1]);
-    return map;
-  }
-
-  /**
-   * Adds `value` to `set`.
-   *
-   * @private
-   * @param {Object} set The set to modify.
-   * @param {*} value The value to add.
-   * @returns {Object} Returns `set`.
-   */
-  function addSetEntry(set, value) {
-    // Don't return `set.add` because it's not chainable in IE 11.
-    set.add(value);
-    return set;
-  }
 
   /**
    * A faster alternative to `Function#apply`, this function invokes `func`
@@ -48858,6 +48990,20 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
       }
     }
     return result;
+  }
+
+  /**
+   * Gets the value at `key`, unless `key` is "__proto__".
+   *
+   * @private
+   * @param {Object} object The object to query.
+   * @param {string} key The key of the property to get.
+   * @returns {*} Returns the property value.
+   */
+  function safeGet(object, key) {
+    return key == '__proto__'
+      ? undefined
+      : object[key];
   }
 
   /**
@@ -50292,7 +50438,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
           if (!cloneableTags[tag]) {
             return object ? value : {};
           }
-          result = initCloneByTag(value, tag, baseClone, isDeep);
+          result = initCloneByTag(value, tag, isDeep);
         }
       }
       // Check for circular references and return its corresponding clone.
@@ -50302,6 +50448,22 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
         return stacked;
       }
       stack.set(value, result);
+
+      if (isSet(value)) {
+        value.forEach(function(subValue) {
+          result.add(baseClone(subValue, bitmask, customizer, subValue, value, stack));
+        });
+
+        return result;
+      }
+
+      if (isMap(value)) {
+        value.forEach(function(subValue, key) {
+          result.set(key, baseClone(subValue, bitmask, customizer, key, value, stack));
+        });
+
+        return result;
+      }
 
       var keysFunc = isFull
         ? (isFlat ? getAllKeysIn : getAllKeys)
@@ -51230,7 +51392,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
         }
         else {
           var newValue = customizer
-            ? customizer(object[key], srcValue, (key + ''), object, source, stack)
+            ? customizer(safeGet(object, key), srcValue, (key + ''), object, source, stack)
             : undefined;
 
           if (newValue === undefined) {
@@ -51257,8 +51419,8 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      *  counterparts.
      */
     function baseMergeDeep(object, source, key, srcIndex, mergeFunc, customizer, stack) {
-      var objValue = object[key],
-          srcValue = source[key],
+      var objValue = safeGet(object, key),
+          srcValue = safeGet(source, key),
           stacked = stack.get(srcValue);
 
       if (stacked) {
@@ -52167,20 +52329,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
     }
 
     /**
-     * Creates a clone of `map`.
-     *
-     * @private
-     * @param {Object} map The map to clone.
-     * @param {Function} cloneFunc The function to clone values.
-     * @param {boolean} [isDeep] Specify a deep clone.
-     * @returns {Object} Returns the cloned map.
-     */
-    function cloneMap(map, isDeep, cloneFunc) {
-      var array = isDeep ? cloneFunc(mapToArray(map), CLONE_DEEP_FLAG) : mapToArray(map);
-      return arrayReduce(array, addMapEntry, new map.constructor);
-    }
-
-    /**
      * Creates a clone of `regexp`.
      *
      * @private
@@ -52191,20 +52339,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
       var result = new regexp.constructor(regexp.source, reFlags.exec(regexp));
       result.lastIndex = regexp.lastIndex;
       return result;
-    }
-
-    /**
-     * Creates a clone of `set`.
-     *
-     * @private
-     * @param {Object} set The set to clone.
-     * @param {Function} cloneFunc The function to clone values.
-     * @param {boolean} [isDeep] Specify a deep clone.
-     * @returns {Object} Returns the cloned set.
-     */
-    function cloneSet(set, isDeep, cloneFunc) {
-      var array = isDeep ? cloneFunc(setToArray(set), CLONE_DEEP_FLAG) : setToArray(set);
-      return arrayReduce(array, addSetEntry, new set.constructor);
     }
 
     /**
@@ -53801,7 +53935,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      */
     function initCloneArray(array) {
       var length = array.length,
-          result = array.constructor(length);
+          result = new array.constructor(length);
 
       // Add properties assigned by `RegExp#exec`.
       if (length && typeof array[0] == 'string' && hasOwnProperty.call(array, 'index')) {
@@ -53828,16 +53962,15 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      * Initializes an object clone based on its `toStringTag`.
      *
      * **Note:** This function only supports cloning values with tags of
-     * `Boolean`, `Date`, `Error`, `Number`, `RegExp`, or `String`.
+     * `Boolean`, `Date`, `Error`, `Map`, `Number`, `RegExp`, `Set`, or `String`.
      *
      * @private
      * @param {Object} object The object to clone.
      * @param {string} tag The `toStringTag` of the object to clone.
-     * @param {Function} cloneFunc The function to clone values.
      * @param {boolean} [isDeep] Specify a deep clone.
      * @returns {Object} Returns the initialized clone.
      */
-    function initCloneByTag(object, tag, cloneFunc, isDeep) {
+    function initCloneByTag(object, tag, isDeep) {
       var Ctor = object.constructor;
       switch (tag) {
         case arrayBufferTag:
@@ -53856,7 +53989,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
           return cloneTypedArray(object, isDeep);
 
         case mapTag:
-          return cloneMap(object, isDeep, cloneFunc);
+          return new Ctor;
 
         case numberTag:
         case stringTag:
@@ -53866,7 +53999,7 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
           return cloneRegExp(object);
 
         case setTag:
-          return cloneSet(object, isDeep, cloneFunc);
+          return new Ctor;
 
         case symbolTag:
           return cloneSymbol(object);
@@ -53913,10 +54046,13 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
      */
     function isIndex(value, length) {
+      var type = typeof value;
       length = length == null ? MAX_SAFE_INTEGER : length;
+
       return !!length &&
-        (typeof value == 'number' || reIsUint.test(value)) &&
-        (value > -1 && value % 1 == 0 && value < length);
+        (type == 'number' ||
+          (type != 'symbol' && reIsUint.test(value))) &&
+            (value > -1 && value % 1 == 0 && value < length);
     }
 
     /**
@@ -54366,11 +54502,11 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      */
     var stringToPath = memoizeCapped(function(string) {
       var result = [];
-      if (reLeadingDot.test(string)) {
+      if (string.charCodeAt(0) === 46 /* . */) {
         result.push('');
       }
-      string.replace(rePropName, function(match, number, quote, string) {
-        result.push(quote ? string.replace(reEscapeChar, '$1') : (number || match));
+      string.replace(rePropName, function(match, number, quote, subString) {
+        result.push(quote ? subString.replace(reEscapeChar, '$1') : (number || match));
       });
       return result;
     });
@@ -57978,9 +58114,11 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
       function remainingWait(time) {
         var timeSinceLastCall = time - lastCallTime,
             timeSinceLastInvoke = time - lastInvokeTime,
-            result = wait - timeSinceLastCall;
+            timeWaiting = wait - timeSinceLastCall;
 
-        return maxing ? nativeMin(result, maxWait - timeSinceLastInvoke) : result;
+        return maxing
+          ? nativeMin(timeWaiting, maxWait - timeSinceLastInvoke)
+          : timeWaiting;
       }
 
       function shouldInvoke(time) {
@@ -60412,9 +60550,35 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      * _.defaults({ 'a': 1 }, { 'b': 2 }, { 'a': 3 });
      * // => { 'a': 1, 'b': 2 }
      */
-    var defaults = baseRest(function(args) {
-      args.push(undefined, customDefaultsAssignIn);
-      return apply(assignInWith, undefined, args);
+    var defaults = baseRest(function(object, sources) {
+      object = Object(object);
+
+      var index = -1;
+      var length = sources.length;
+      var guard = length > 2 ? sources[2] : undefined;
+
+      if (guard && isIterateeCall(sources[0], sources[1], guard)) {
+        length = 1;
+      }
+
+      while (++index < length) {
+        var source = sources[index];
+        var props = keysIn(source);
+        var propsIndex = -1;
+        var propsLength = props.length;
+
+        while (++propsIndex < propsLength) {
+          var key = props[propsIndex];
+          var value = object[key];
+
+          if (value === undefined ||
+              (eq(value, objectProto[key]) && !hasOwnProperty.call(object, key))) {
+            object[key] = source[key];
+          }
+        }
+      }
+
+      return object;
     });
 
     /**
@@ -60811,6 +60975,11 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      * // => { '1': 'c', '2': 'b' }
      */
     var invert = createInverter(function(result, value, key) {
+      if (value != null &&
+          typeof value.toString != 'function') {
+        value = nativeObjectToString.call(value);
+      }
+
       result[value] = key;
     }, constant(identity));
 
@@ -60841,6 +61010,11 @@ var __WEBPACK_AMD_DEFINE_RESULT__;(function(root, factory){
      * // => { 'group1': ['a', 'c'], 'group2': ['b'] }
      */
     var invertBy = createInverter(function(result, value, key) {
+      if (value != null &&
+          typeof value.toString != 'function') {
+        value = nativeObjectToString.call(value);
+      }
+
       if (hasOwnProperty.call(result, value)) {
         result[value].push(key);
       } else {
@@ -64755,6 +64929,204 @@ module.exports = function(module) {
 	return module;
 };
 
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
+ *  StartAudioContext.js
+ *  @author Yotam Mann
+ *  @license http://opensource.org/licenses/MIT MIT License
+ *  @copyright 2016 Yotam Mann
+ */
+(function (root, factory) {
+	if (true) {
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__))
+	 } else if (typeof module === "object" && module.exports) {
+        module.exports = factory()
+	} else {
+		root.StartAudioContext = factory()
+  }
+}(this, function () {
+
+	//TAP LISTENER/////////////////////////////////////////////////////////////
+
+	/**
+	 * @class  Listens for non-dragging tap ends on the given element
+	 * @param {Element} element
+	 * @internal
+	 */
+	var TapListener = function(element, context){
+
+		this._dragged = false
+
+		this._element = element
+
+		this._bindedMove = this._moved.bind(this)
+		this._bindedEnd = this._ended.bind(this, context)
+
+		element.addEventListener("touchstart", this._bindedEnd)
+		element.addEventListener("touchmove", this._bindedMove)
+		element.addEventListener("touchend", this._bindedEnd)
+		element.addEventListener("mouseup", this._bindedEnd)
+	}
+
+	/**
+	 * drag move event
+	 */
+	TapListener.prototype._moved = function(e){
+		this._dragged = true
+	};
+
+	/**
+	 * tap ended listener
+	 */
+	TapListener.prototype._ended = function(context){
+		if (!this._dragged){
+			startContext(context)
+		}
+		this._dragged = false
+	};
+
+	/**
+	 * remove all the bound events
+	 */
+	TapListener.prototype.dispose = function(){
+		this._element.removeEventListener("touchstart", this._bindedEnd)
+		this._element.removeEventListener("touchmove", this._bindedMove)
+		this._element.removeEventListener("touchend", this._bindedEnd)
+		this._element.removeEventListener("mouseup", this._bindedEnd)
+		this._bindedMove = null
+		this._bindedEnd = null
+		this._element = null
+	};
+
+	//END TAP LISTENER/////////////////////////////////////////////////////////
+
+	/**
+	 * Plays a silent sound and also invoke the "resume" method
+	 * @param {AudioContext} context
+	 * @private
+	 */
+	function startContext(context){
+		// this accomplishes the iOS specific requirement
+		var buffer = context.createBuffer(1, 1, context.sampleRate)
+		var source = context.createBufferSource()
+		source.buffer = buffer
+		source.connect(context.destination)
+		source.start(0)
+
+		// resume the audio context
+		if (context.resume){
+			context.resume()
+		}
+	}
+
+	/**
+	 * Returns true if the audio context is started
+	 * @param  {AudioContext}  context
+	 * @return {Boolean}
+	 * @private
+	 */
+	function isStarted(context){
+		 return context.state === "running"
+	}
+
+	/**
+	 * Invokes the callback as soon as the AudioContext
+	 * is started
+	 * @param  {AudioContext}   context
+	 * @param  {Function} callback
+	 */
+	function onStarted(context, callback){
+
+		function checkLoop(){
+			if (isStarted(context)){
+				callback()
+			} else {
+				requestAnimationFrame(checkLoop)
+				if (context.resume){
+					context.resume()
+				}
+			}
+		}
+
+		if (isStarted(context)){
+			callback()
+		} else {
+			checkLoop()
+		}
+	}
+
+	/**
+	 * Add a tap listener to the audio context
+	 * @param  {Array|Element|String|jQuery} element
+	 * @param {Array} tapListeners
+	 */
+	function bindTapListener(element, tapListeners, context){
+		if (Array.isArray(element) || (NodeList && element instanceof NodeList)){
+			for (var i = 0; i < element.length; i++){
+				bindTapListener(element[i], tapListeners, context)
+			}
+		} else if (typeof element === "string"){
+			bindTapListener(document.querySelectorAll(element), tapListeners, context)
+		} else if (element.jquery && typeof element.toArray === "function"){
+			bindTapListener(element.toArray(), tapListeners, context)
+		} else if (Element && element instanceof Element){
+			//if it's an element, create a TapListener
+			var tap = new TapListener(element, context)
+			tapListeners.push(tap)
+		} 
+	}
+
+	/**
+	 * @param {AudioContext} context The AudioContext to start.
+	 * @param {Array|String|Element|jQuery=} elements For iOS, the list of elements
+	 *                                               to bind tap event listeners
+	 *                                               which will start the AudioContext. If
+	 *                                               no elements are given, it will bind
+	 *                                               to the document.body.
+	 * @param {Function=} callback The callback to invoke when the AudioContext is started.
+	 * @return {Promise} The promise is invoked when the AudioContext
+	 *                       is started.
+	 */
+	function StartAudioContext(context, elements, callback){
+
+		//the promise is invoked when the AudioContext is started
+		var promise = new Promise(function(success) {
+			onStarted(context, success)
+		})
+
+		// The TapListeners bound to the elements
+		var tapListeners = []
+
+		// add all the tap listeners
+		if (!elements){
+			elements = document.body
+		}
+		bindTapListener(elements, tapListeners, context)
+
+		//dispose all these tap listeners when the context is started
+		promise.then(function(){
+			for (var i = 0; i < tapListeners.length; i++){
+				tapListeners[i].dispose()
+			}
+			tapListeners = null
+
+			if (callback){
+				callback()
+			}
+		})
+
+		return promise
+	}
+
+	return StartAudioContext
+}))
 
 /***/ })
 /******/ ]);
