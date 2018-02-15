@@ -269,7 +269,7 @@ var _state = setVoicing(setHarmonicMode({
         patternId: '1',
         voicing: 'chordMelody',
         articulation: 'legato',
-        velocity: 10,
+        velocity: 50,
         outputType: 'piano',
         outputControls: {
             piano: {
@@ -297,7 +297,7 @@ function anders() {
         updateState(tickFn, time, tick);
     }, '16n');
 
-    Tone.Transport.start("+0.1");
+    Tone.Transport.start("+0.5");
     //this.masterGain = new Tone.Gain(1.0).toMaster();
 
     function turnOn(state, isCursorsSuppressed, currentTime) {
@@ -765,10 +765,13 @@ function renderUI(state) {
     }, this);
     //console.log(s, lastPlay);
     if (s == lastPlay) {
-        //console.info("SKIPP");
         return;
     }
     lastPlay = s;
+
+    console.log("before", voicesToPlay.currentTime);
+    voicesToPlay.currentTime += 0.1;
+    console.log("after", voicesToPlay.currentTime);
 
     //console.warn(state.currentTime);
     Tone.Draw.schedule(function () {
@@ -823,8 +826,9 @@ function playSounds(play) {
         // }
 
         //console.log("playsounds2");
-        if (play.currentTime <= Tone.now()) {
-            console.error("time is in Past");
+        var now = Tone.now();
+        if (play.currentTime <= now) {
+            console.error("time is in Past", play.currentTime, "vs", now);
             return;
         }
         play.voices.forEach(function (voice) {
