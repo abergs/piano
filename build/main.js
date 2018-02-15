@@ -78,7 +78,7 @@ var lodash = __webpack_require__(4);
 var StartAudioContext = __webpack_require__(7);
 
 Tone.Transport.bpm.value = 60;
-Tone.context.latencyHint = "playback";
+Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context).then(function () {
@@ -777,7 +777,7 @@ function renderUI(state) {
         //do drawing or DOM manipulation here
         mousedot.style.left = state.mousePosition.horizontal + 'px';
         mousedot.style.top = state.mousePosition.vertical + 'px';
-    }, state.currentTime);
+    }, voicesToPlay.currentTime);
     //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }

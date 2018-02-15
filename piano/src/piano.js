@@ -4,7 +4,7 @@ var lodash = require("lodash");
 var StartAudioContext = require("startaudiocontext");
 
 Tone.Transport.bpm.value = 60;
-Tone.context.latencyHint = "playback";
+Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context).then(function () {
@@ -714,7 +714,7 @@ function renderUI(state) {
         //do drawing or DOM manipulation here
         mousedot.style.left = state.mousePosition.horizontal + 'px';
         mousedot.style.top = state.mousePosition.vertical + 'px';
-    }, state.currentTime);
+    }, voicesToPlay.currentTime);
     //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
