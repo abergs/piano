@@ -1,11 +1,15 @@
-var Tone = require("Tone");
+var Tone = require("tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
+//var StartAudioContext = require("startaudiocontext");
+
 Tone.Transport.bpm.value = 60;
 Tone.context.latencyHint = "playback";
 var heldNotes = new Set();
 var piano;
-
+// StartAudioContext(Tone.context).then(function(){
+//     console.log("Started");
+// });    
 
 
 
