@@ -349,7 +349,7 @@ function anders() {
         // go right left or stay still
         var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
 
-        var FACTOR = 10;
+        var FACTOR = 20;
 
         var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal;
         var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
@@ -375,22 +375,27 @@ function anders() {
 
     (function loop() {
         var rand = Math.round(Math.random() * (600 - 100)) + 100;
+
         //console.log("sleep", rand);
         setTimeout(function () {
-            ofCourseIStillLoveYou();
+            ofCourseIStillLoveYou(rand);
             loop();
         }, rand);
     })();
 
-    function ofCourseIStillLoveYou() {
+    var target;
+    function ofCourseIStillLoveYou(sleep) {
         var grid = { horizontal: 600, vertical: 600 };
         var currentPos = _state.mousePosition;
         //console.log("currentPos", currentPos);
-
-        var target = {
-            horizontal: grid.horizontal * Math.random(),
-            vertical: grid.vertical * Math.random()
-        };
+        console.log("sleep", sleep);
+        if (!target || sleep > 300) {
+            target = {
+                horizontal: grid.horizontal * Math.random(),
+                vertical: grid.vertical * Math.random()
+            };
+        }
+        console.log(target);
         var movement = getMovement(target, currentPos, grid);
         //console.log("movement", movement);
         var newLocation = getNewLocation(movement, currentPos, grid);
@@ -708,54 +713,12 @@ var getVoicesToDisplay = function getVoicesToDisplay(voices, controls) {
 };
 
 var mousedot = document.getElementById("mousedot");
+var counter = 0;
 function renderUI(state) {
-    //var keyboards = getKeyboards(state);
-    //var _iteratorNormalCompletion = true;
-    //var _didIteratorError = false;
-    //var _iteratorError = undefined;
-
-    // try {
-    //     for (var _iterator = keyboards[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-    //         var k = _step.value;
-
-    //         if (k.orientation === 'horizontal') {
-    //             horizontalKeyb.update(k.keys);
-    //         } else if (k.orientation === 'vertical') {
-    //             verticalKeyb.update(k.keys);
-    //         }
-    //     }
-    // } catch (err) {
-    //     _didIteratorError = true;
-    //     _iteratorError = err;
-    // } finally {
-    //     try {
-    //         if (!_iteratorNormalCompletion && _iterator.return) {
-    //             _iterator.return();
-    //         }
-    //     } finally {
-    //         if (_didIteratorError) {
-    //             throw _iteratorError;
-    //         }
-    //     }
-    // }
 
     var voicesToPlay = getVoicesToPlay(state);
     //console.log(state, voicesToPlay);
     var currentTime = getCurrentTime(state);
-    //console.log("play", voicesToPlay.currentTime, currentTime);
-    // requestAnimationFrame(() => {
-    //     var el = document.getElementById("note");
-    //     el.innerText = JSON.stringify(state.currentVoices);
-    // });
-
-    // voices.update(getVoicesToDisplay(state).filter(function (v) {
-    //     return v.currentKey;
-    // }), {
-    //         voicesToPlay: voicesToPlay,
-    //         currentTime: currentTime
-    //     });
-    //pointerSurface.update(currentTime, isPlaying(state), getControls(state), voicesToPlay);
-    //console.log(voicesToPlay);
 
     var s = "";
     voicesToPlay.voices.forEach(function (voice) {
@@ -769,21 +732,34 @@ function renderUI(state) {
     }
     lastPlay = s;
 
-    console.log("before", voicesToPlay.currentTime);
     voicesToPlay.currentTime += 0.1;
-    console.log("after", voicesToPlay.currentTime);
 
     //console.warn(state.currentTime);
     Tone.Draw.schedule(function () {
 
         //console.warn("DRAW", state.mousePosition);
         //do drawing or DOM manipulation here
-        mousedot.style.left = state.mousePosition.horizontal + 'px';
-        mousedot.style.top = state.mousePosition.vertical + 'px';
+        var el = getStar();
+        el.style.left = state.mousePosition.horizontal + 'px';
+        el.style.top = state.mousePosition.vertical + 'px';
+        if (els.length > 30) {
+            var old = els.shift();
+            zone.removeChild(old);
+        }
     }, voicesToPlay.currentTime);
     //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
+
+var zone = document.getElementById("zone");
+function getStar() {
+    var d = document.createElement("div");
+    d.className = "mousedot";
+    zone.appendChild(d);
+    els.push(d);
+    return d;
+}
+var els = [];
 
 //50,3,9 horizontal
 //50,3,5 vertical

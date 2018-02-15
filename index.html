@@ -2,12 +2,25 @@
 <html>
 <head>
     <style>
-        #mousedot {
+        #mousedot, .mousedot {
             border-radius:100%;
             background:yellow;
             width:5px;
             height:5px;
             position:absolute;
+            animation: fadeout 10s 1;
+            animation-fill-mode: forwards;
+
+        }
+
+        @keyframes fadeout {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity:0;
+            }            
         }
     </style>
 </head>
