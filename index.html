@@ -4,13 +4,13 @@
     <style>
         #mousedot, .mousedot {
             border-radius:100%;
-            background:yellow;
+            background:white;
             width:5px;
             height:5px;
             position:absolute;
             animation: fadeout 10s 1;
             animation-fill-mode: forwards;
-
+            box-shadow: 0 0 10px rgba(255,255,255,1);
         }
 
         @keyframes fadeout {
@@ -18,15 +18,20 @@
                 opacity: 1;
             }
 
+            10% {
+                box-shadow: 0 0 0 rgba(0,0,0,0);
+            }
+
             to {
                 opacity:0;
+                transform: translateX(-20px) translateY(20px);
             }            
         }
     </style>
 </head>
 <body>
     <div id="note"></div>    
-    <div id="zone" style="width:600px;height:600px; background: green; position:relative;">
+    <div id="zone" style="width:600px;height:600px; background:#222; position:relative;">
         <div id="mousedot"></div>
     </div>
     <script src="build/main.js"></script>
