@@ -1,20 +1,15 @@
 var Tone = require("tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
-//var StartAudioContext = require("startaudiocontext");
+var StartAudioContext = require("startaudiocontext");
 
 Tone.Transport.bpm.value = 60;
 Tone.context.latencyHint = "playback";
 var heldNotes = new Set();
 var piano;
-// StartAudioContext(Tone.context).then(function(){
-//     console.log("Started");
-// });    
-
-
-
-
-console.log("HEEELO");
+StartAudioContext(Tone.context).then(function () {
+    console.log("Started");
+});
 
 // var state = {
 //     keyboards: [makeKeyboard(50, 3, 5, 'vertical',[1]), makeKeyboard(50, 3, 9, 'horizontal',[2,3,4])],
@@ -218,7 +213,7 @@ var _state = setVoicing(setHarmonicMode({
 //window.state = state;
 
 let repeatToken;
-let compressor =  new Tone.Gain(1.0).toMaster();
+let compressor = new Tone.Gain(1.0).toMaster();
 function anders() {
     //var activeKeys = setActiveKeys(state);
     //state = setActiveKeys(Object.assign({}, state));
@@ -233,7 +228,7 @@ function anders() {
         updateState(tickFn, time, tick);
 
     }, '16n');
-     
+
 
     Tone.Transport.start("+0.1");
     //this.masterGain = new Tone.Gain(1.0).toMaster();
@@ -245,13 +240,111 @@ function anders() {
         return retrigger(newState, currentTime);
     }
 
-    function moveCursor2(state, x,y) {
+    function moveCursor2(state, x, y) {
         return Object.assign({}, state, {
             pendingMousePosition: {
                 horizontal: x,
                 vertical: y
             }
         });
+    }
+
+    // function test() {
+    //     var currentPos = { horizonta: 0, vertical: 0 };
+
+    //     var grid = { horizontal: 500, vertical: 500 };
+    //     var target = { horizontal: 100, vertical: 100 };
+    //     var movement = getMovement(target, currentPos, grid);
+
+    //     var location = getNewLocation(movement, currentPos, grid);
+    // }
+
+    function getNewLocation(movement, currentPos, grid) {
+
+        // get new location using boundary check
+        return {
+            horizontal: Math.max(0, Math.min(grid.horizontal - 1,
+                currentPos.horizontal + movement.horizontal)),
+            vertical: Math.max(0, Math.min(grid.horizontal - 1,
+                currentPos.vertical + movement.vertical))
+        };
+    }
+
+    function getMovement(target, currentPos, grid) {
+
+        console.log("target", target);
+        // go up or down or stay still?
+        var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
+
+        // go right left or stay still
+        var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
+
+        var FACTOR = 10;
+
+        // Get delta with FACTOR and boundary check within grid
+        var deltaHorizontal = horizontalMovement * FACTOR;
+
+        var deltaVertical = verticalMovement * FACTOR;
+
+        var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
+        return result;
+    }
+
+    function getOneDirection(target, currentPos, grid) {
+        if (target > currentPos) {
+            return 1;
+        } else if (target < currentPos) {
+            return -1;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    // (function loop() {
+    //     var rand = Math.round(Math.random() * (3000 - 500)) + 500;
+    //     setTimeout(function() {
+    //             doSomething();
+    //             loop();  
+    //     }, rand);
+    // }());
+
+    setInterval(() => {
+        var grid = { horizontal: 600, vertical: 600 };
+        var currentPos = _state.mousePosition;
+        console.log("currentPos", currentPos);
+
+        var target = {
+            horizontal: grid.horizontal * Math.random(),
+            vertical: grid.vertical * Math.random()
+        };
+        var movement = getMovement(target, currentPos, grid);
+        console.log("movement", movement);
+        var newLocation = getNewLocation(movement, currentPos, grid);
+        var safeLocation = getSmoothLocation(target, newLocation, movement);
+        console.log("new location", newLocation, safeLocation);
+        updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
+    }, 100);
+
+    function getSmoothLocation(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var location = {
+            horizontal: smoothValue(target.horizontal, newLocation.horizontal, movement.horizontal),
+            vertical: smoothValue(target.vertical, newLocation.vertical, movement.vertical)
+        };
+        
+        return location;
+    }
+
+    function smoothValue(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var diff = Math.abs(target - newLocation);
+        // close enough
+        if(diff < Math.abs(movement)) {
+            return target;
+        }
+        // just original propsal
+        return newLocation;
     }
 
     setTimeout(() => {
@@ -282,15 +375,15 @@ function anders() {
         //     //console.log("interval", state.pendingMousePosition);
         // }, 1500);
         document.getElementById("zone").onmousemove = function (e) {
-                var deltaX = e.movementX;
-                var deltaY = -e.movementY;
-                //console.log(e);
-                //_state = retrigger(_state, _state.currentTime);
-                //_state.isPlaying = true;
-                //console.log("mouse", deltaX, deltaY);
-                
-                updateState(moveCursor2, e.x, e.y);
-                //_state.isPlaying = false;
+            var deltaX = e.movementX;
+            var deltaY = -e.movementY;
+            //console.log(e);
+            //_state = retrigger(_state, _state.currentTime);
+            //_state.isPlaying = true;
+            //console.log("mouse", deltaX, deltaY);
+
+            updateState(moveCursor2, e.x, e.y);
+            //_state.isPlaying = false;
         };
     }, 1);
 }
@@ -462,7 +555,7 @@ function getUpdatedVoices(state, time, scheduling) {
     var tickMapping = getTickMapping(changedKeys.map(function (k) {
         return k.voiceId;
     }), state.currentTick, state.controls.treatment, scheduling, state.controls.patternOn);
-    
+
     return changedKeys.map(function (_ref, index) {
         var voiceId = _ref.voiceId
             , keyboard = _ref.keyboard
@@ -595,27 +688,27 @@ function renderUI(state) {
     //console.log(voicesToPlay);
 
     var s = "";
-    voicesToPlay.voices.forEach(function(voice) {
-        if(voice.currentKey) {
-        s += voice.currentKey.index;
+    voicesToPlay.voices.forEach(function (voice) {
+        if (voice.currentKey) {
+            s += voice.currentKey.index;
         }
     }, this);
-    console.log(s, lastPlay);
-    if(s == lastPlay) {
-        console.info("SKIPP");
+    //console.log(s, lastPlay);
+    if (s == lastPlay) {
+        //console.info("SKIPP");
         return;
     }
     lastPlay = s;
 
     //console.warn(state.currentTime);
-    Tone.Draw.schedule(function(){
+    Tone.Draw.schedule(function () {
 
         //console.warn("DRAW", state.mousePosition);
         //do drawing or DOM manipulation here
-        mousedot.style.left = state.mousePosition.horizontal+'px';
-        mousedot.style.top = state.mousePosition.vertical+'px';
+        mousedot.style.left = state.mousePosition.horizontal + 'px';
+        mousedot.style.top = state.mousePosition.vertical + 'px';
     }, state.currentTime);
-    console.log(voicesToPlay);
+    //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
 
@@ -648,8 +741,8 @@ var lastPlay = null;
 function playSounds(play) {
     //console.log("playsounds");
 
-    if (play.voices.length > 0 ) {
-        
+    if (play.voices.length > 0) {
+
         // var s = "";
         // play.voices.forEach(function(voice) {
         //     s += voice.currentKey.index;
@@ -659,9 +752,9 @@ function playSounds(play) {
         //     console.info("SKIPP");
         //     return;
         // }
-        
+
         //console.log("playsounds2");
-        if(play.currentTime <= Tone.now()) {
+        if (play.currentTime <= Tone.now()) {
             console.error("time is in Past");
             return;
 
@@ -678,10 +771,10 @@ function playSounds(play) {
             playVoice(voice, play.currentTime);
         }, this);
 
-        
+
 
         //lastPlay = s;
-    }else {
+    } else {
         //console.info("XX", lastPlay, play);
     }
 }

@@ -75,18 +75,15 @@ function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 var Tone = __webpack_require__(1);
 var TonePiano = __webpack_require__(2);
 var lodash = __webpack_require__(4);
-//var StartAudioContext = require("startaudiocontext");
+var StartAudioContext = __webpack_require__(7);
 
 Tone.Transport.bpm.value = 60;
 Tone.context.latencyHint = "playback";
 var heldNotes = new Set();
 var piano;
-// StartAudioContext(Tone.context).then(function(){
-//     console.log("Started");
-// });    
-
-
-console.log("HEEELO");
+StartAudioContext(Tone.context).then(function () {
+    console.log("Started");
+});
 
 // var state = {
 //     keyboards: [makeKeyboard(50, 3, 5, 'vertical',[1]), makeKeyboard(50, 3, 9, 'horizontal',[2,3,4])],
@@ -317,6 +314,101 @@ function anders() {
                 vertical: y
             }
         });
+    }
+
+    // function test() {
+    //     var currentPos = { horizonta: 0, vertical: 0 };
+
+    //     var grid = { horizontal: 500, vertical: 500 };
+    //     var target = { horizontal: 100, vertical: 100 };
+    //     var movement = getMovement(target, currentPos, grid);
+
+    //     var location = getNewLocation(movement, currentPos, grid);
+    // }
+
+    function getNewLocation(movement, currentPos, grid) {
+
+        // get new location using boundary check
+        return {
+            horizontal: Math.max(0, Math.min(grid.horizontal - 1, currentPos.horizontal + movement.horizontal)),
+            vertical: Math.max(0, Math.min(grid.horizontal - 1, currentPos.vertical + movement.vertical))
+        };
+    }
+
+    function getMovement(target, currentPos, grid) {
+
+        console.log("target", target);
+        // go up or down or stay still?
+        var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
+
+        // go right left or stay still
+        var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
+
+        var FACTOR = 10;
+
+        // Get delta with FACTOR and boundary check within grid
+        var deltaHorizontal = horizontalMovement * FACTOR;
+
+        var deltaVertical = verticalMovement * FACTOR;
+
+        var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
+        return result;
+    }
+
+    function getOneDirection(target, currentPos, grid) {
+        if (target > currentPos) {
+            return 1;
+        } else if (target < currentPos) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    // (function loop() {
+    //     var rand = Math.round(Math.random() * (3000 - 500)) + 500;
+    //     setTimeout(function() {
+    //             doSomething();
+    //             loop();  
+    //     }, rand);
+    // }());
+
+    setInterval(function () {
+        var grid = { horizontal: 600, vertical: 600 };
+        var currentPos = _state.mousePosition;
+        console.log("currentPos", currentPos);
+
+        var target = {
+            horizontal: grid.horizontal * Math.random(),
+            vertical: grid.vertical * Math.random()
+        };
+        var movement = getMovement(target, currentPos, grid);
+        console.log("movement", movement);
+        var newLocation = getNewLocation(movement, currentPos, grid);
+        var safeLocation = getSmoothLocation(target, newLocation, movement);
+        console.log("new location", newLocation, safeLocation);
+        updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
+    }, 100);
+
+    function getSmoothLocation(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var location = {
+            horizontal: smoothValue(target.horizontal, newLocation.horizontal, movement.horizontal),
+            vertical: smoothValue(target.vertical, newLocation.vertical, movement.vertical)
+        };
+
+        return location;
+    }
+
+    function smoothValue(target, newLocation, movement) {
+        // smoother to balance movements when we are close enough
+        var diff = Math.abs(target - newLocation);
+        // close enough
+        if (diff < Math.abs(movement)) {
+            return target;
+        }
+        // just original propsal
+        return newLocation;
     }
 
     setTimeout(function () {
@@ -664,9 +756,9 @@ function renderUI(state) {
             s += voice.currentKey.index;
         }
     }, this);
-    console.log(s, lastPlay);
+    //console.log(s, lastPlay);
     if (s == lastPlay) {
-        console.info("SKIPP");
+        //console.info("SKIPP");
         return;
     }
     lastPlay = s;
@@ -679,7 +771,7 @@ function renderUI(state) {
         mousedot.style.left = state.mousePosition.horizontal + 'px';
         mousedot.style.top = state.mousePosition.vertical + 'px';
     }, state.currentTime);
-    console.log(voicesToPlay);
+    //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
 
@@ -64850,6 +64942,204 @@ module.exports = function(module) {
 	return module;
 };
 
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/**
+ *  StartAudioContext.js
+ *  @author Yotam Mann
+ *  @license http://opensource.org/licenses/MIT MIT License
+ *  @copyright 2016 Yotam Mann
+ */
+(function (root, factory) {
+	if (true) {
+		!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__))
+	 } else if (typeof module === "object" && module.exports) {
+        module.exports = factory()
+	} else {
+		root.StartAudioContext = factory()
+  }
+}(this, function () {
+
+	//TAP LISTENER/////////////////////////////////////////////////////////////
+
+	/**
+	 * @class  Listens for non-dragging tap ends on the given element
+	 * @param {Element} element
+	 * @internal
+	 */
+	var TapListener = function(element, context){
+
+		this._dragged = false
+
+		this._element = element
+
+		this._bindedMove = this._moved.bind(this)
+		this._bindedEnd = this._ended.bind(this, context)
+
+		element.addEventListener("touchstart", this._bindedEnd)
+		element.addEventListener("touchmove", this._bindedMove)
+		element.addEventListener("touchend", this._bindedEnd)
+		element.addEventListener("mouseup", this._bindedEnd)
+	}
+
+	/**
+	 * drag move event
+	 */
+	TapListener.prototype._moved = function(e){
+		this._dragged = true
+	};
+
+	/**
+	 * tap ended listener
+	 */
+	TapListener.prototype._ended = function(context){
+		if (!this._dragged){
+			startContext(context)
+		}
+		this._dragged = false
+	};
+
+	/**
+	 * remove all the bound events
+	 */
+	TapListener.prototype.dispose = function(){
+		this._element.removeEventListener("touchstart", this._bindedEnd)
+		this._element.removeEventListener("touchmove", this._bindedMove)
+		this._element.removeEventListener("touchend", this._bindedEnd)
+		this._element.removeEventListener("mouseup", this._bindedEnd)
+		this._bindedMove = null
+		this._bindedEnd = null
+		this._element = null
+	};
+
+	//END TAP LISTENER/////////////////////////////////////////////////////////
+
+	/**
+	 * Plays a silent sound and also invoke the "resume" method
+	 * @param {AudioContext} context
+	 * @private
+	 */
+	function startContext(context){
+		// this accomplishes the iOS specific requirement
+		var buffer = context.createBuffer(1, 1, context.sampleRate)
+		var source = context.createBufferSource()
+		source.buffer = buffer
+		source.connect(context.destination)
+		source.start(0)
+
+		// resume the audio context
+		if (context.resume){
+			context.resume()
+		}
+	}
+
+	/**
+	 * Returns true if the audio context is started
+	 * @param  {AudioContext}  context
+	 * @return {Boolean}
+	 * @private
+	 */
+	function isStarted(context){
+		 return context.state === "running"
+	}
+
+	/**
+	 * Invokes the callback as soon as the AudioContext
+	 * is started
+	 * @param  {AudioContext}   context
+	 * @param  {Function} callback
+	 */
+	function onStarted(context, callback){
+
+		function checkLoop(){
+			if (isStarted(context)){
+				callback()
+			} else {
+				requestAnimationFrame(checkLoop)
+				if (context.resume){
+					context.resume()
+				}
+			}
+		}
+
+		if (isStarted(context)){
+			callback()
+		} else {
+			checkLoop()
+		}
+	}
+
+	/**
+	 * Add a tap listener to the audio context
+	 * @param  {Array|Element|String|jQuery} element
+	 * @param {Array} tapListeners
+	 */
+	function bindTapListener(element, tapListeners, context){
+		if (Array.isArray(element) || (NodeList && element instanceof NodeList)){
+			for (var i = 0; i < element.length; i++){
+				bindTapListener(element[i], tapListeners, context)
+			}
+		} else if (typeof element === "string"){
+			bindTapListener(document.querySelectorAll(element), tapListeners, context)
+		} else if (element.jquery && typeof element.toArray === "function"){
+			bindTapListener(element.toArray(), tapListeners, context)
+		} else if (Element && element instanceof Element){
+			//if it's an element, create a TapListener
+			var tap = new TapListener(element, context)
+			tapListeners.push(tap)
+		} 
+	}
+
+	/**
+	 * @param {AudioContext} context The AudioContext to start.
+	 * @param {Array|String|Element|jQuery=} elements For iOS, the list of elements
+	 *                                               to bind tap event listeners
+	 *                                               which will start the AudioContext. If
+	 *                                               no elements are given, it will bind
+	 *                                               to the document.body.
+	 * @param {Function=} callback The callback to invoke when the AudioContext is started.
+	 * @return {Promise} The promise is invoked when the AudioContext
+	 *                       is started.
+	 */
+	function StartAudioContext(context, elements, callback){
+
+		//the promise is invoked when the AudioContext is started
+		var promise = new Promise(function(success) {
+			onStarted(context, success)
+		})
+
+		// The TapListeners bound to the elements
+		var tapListeners = []
+
+		// add all the tap listeners
+		if (!elements){
+			elements = document.body
+		}
+		bindTapListener(elements, tapListeners, context)
+
+		//dispose all these tap listeners when the context is started
+		promise.then(function(){
+			for (var i = 0; i < tapListeners.length; i++){
+				tapListeners[i].dispose()
+			}
+			tapListeners = null
+
+			if (callback){
+				callback()
+			}
+		})
+
+		return promise
+	}
+
+	return StartAudioContext
+}))
 
 /***/ })
 /******/ ]);
