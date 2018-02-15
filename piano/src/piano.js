@@ -200,7 +200,7 @@ var _state = setVoicing(setHarmonicMode({
         patternId: '1',
         voicing: 'chordMelody',
         articulation: 'legato',
-        velocity: 20,
+        velocity: 10,
         outputType: 'piano',
         outputControls: {
             piano: {
@@ -237,7 +237,8 @@ function anders() {
         var newState = Object.assign({}, state, {
             isCursorsSuppressed: isCursorsSuppressed
         });
-        return retrigger(newState, currentTime);
+        return newState;
+        //return retrigger(newState, currentTime);
     }
 
     function moveCursor2(state, x, y) {
@@ -270,9 +271,13 @@ function anders() {
         };
     }
 
+    function diff(x,y){
+        return Math.abs(x - y);
+    }
+
     function getMovement(target, currentPos, grid) {
 
-        console.log("target", target);
+        //console.log("target", target);
         // go up or down or stay still?
         var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
 
@@ -281,10 +286,13 @@ function anders() {
 
         var FACTOR = 10;
 
+        var dynamicFactorHorizontal =  1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal
+        var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
+        //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
         // Get delta with FACTOR and boundary check within grid
-        var deltaHorizontal = horizontalMovement * FACTOR;
+        var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
 
-        var deltaVertical = verticalMovement * FACTOR;
+        var deltaVertical = verticalMovement * FACTOR * dynamicFactorVertical;
 
         var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
         return result;
@@ -301,30 +309,31 @@ function anders() {
         }
     }
 
-    // (function loop() {
-    //     var rand = Math.round(Math.random() * (3000 - 500)) + 500;
-    //     setTimeout(function() {
-    //             doSomething();
-    //             loop();  
-    //     }, rand);
-    // }());
+    (function loop() {
+        var rand = Math.round(Math.random() * (600 - 100)) + 100;
+        //console.log("sleep", rand);
+        setTimeout(function() {
+                ofCourseIStillLoveYou();
+                loop();
+        }, rand);
+    }());
 
-    setInterval(() => {
+    function ofCourseIStillLoveYou() {
         var grid = { horizontal: 600, vertical: 600 };
         var currentPos = _state.mousePosition;
-        console.log("currentPos", currentPos);
+        //console.log("currentPos", currentPos);
 
         var target = {
             horizontal: grid.horizontal * Math.random(),
             vertical: grid.vertical * Math.random()
         };
         var movement = getMovement(target, currentPos, grid);
-        console.log("movement", movement);
+        //console.log("movement", movement);
         var newLocation = getNewLocation(movement, currentPos, grid);
         var safeLocation = getSmoothLocation(target, newLocation, movement);
-        console.log("new location", newLocation, safeLocation);
+        //console.log("new location", newLocation, safeLocation);
         updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
-    }, 100);
+    }
 
     function getSmoothLocation(target, newLocation, movement) {
         // smoother to balance movements when we are close enough
@@ -421,7 +430,6 @@ loadPiano(compressor).then(() => {
     console.log("piano loaded");
     anders();
 });
-console.log("after");
 
 
 //  function start(element) {
@@ -435,7 +443,6 @@ console.log("after");
 // }
 
 function loadPiano(dest) {
-    console.log("Dest", dest);
     piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
     return piano.load('../piano/');
 }
