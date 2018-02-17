@@ -5,15 +5,37 @@
    integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
    crossorigin=""/>
     <style>
-        #mousedot, .mousedot, #targetdot, .icon{
+        #mousedot, .mousedot, #targetdot, .icon, .icon2{
             border-radius:100%;
             background:white;
-            width:5px;
-            height:5px;
+            width:10px;
+            height:10px;
             position:absolute;
-            animation: fadeout 10s 1;
+            animation: fadeout 5s 1;
             animation-fill-mode: forwards;
             box-shadow: 0 0 10px rgba(255,255,255,1);
+        }
+        .icon2 {
+            position: relative;
+            background:blue;
+            width:6px;
+            height:6px;
+            box-shadow: 0 0 10px rgba(0,0,255,1);
+            animation: fadeout 10s 1;
+            animation-fill-mode: forwards;
+        }
+
+        .key1 {
+            border:1px solid rgba(255,255,255,0.3);
+            
+            width: 100vw;
+            z-index:9999;
+        }
+
+        .key2 {
+            border:1px solid rgba(255,0,0,.3);
+            height: 100vh;
+            z-index:9999;
         }
 
         .icon {
@@ -32,10 +54,12 @@
 
             10% {
                 box-shadow: 0 0 0 rgba(0,0,0,0);
+                transform: scale(0.5);
             }
 
             to {
                 opacity:0;
+                transform: scale(0.5);
                 /*transform: translateX(-20px) translateY(20px);*/
             }            
         }

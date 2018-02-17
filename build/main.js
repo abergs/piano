@@ -85,6 +85,8 @@ StartAudioContext(Tone.context).then(function () {
     console.log("Started");
 });
 
+var DEBUG = false;
+
 var SCALES = {
     diatonic: {
         intervals: [2, 2, 1, 2, 2, 2, 1],
@@ -103,7 +105,12 @@ var SCALES = {
 var PATTERNS = {
     '1': [0, 7, 1, 6, 2, 5, 3, 4, 5, 2, 4, 5, 2, 6, 1, 7]
 };
-var SURFACE_AREA_SIZE = 600; // dont think we really newed this
+var SURFACE_AREA_SIZE = window.innerHeight; // dont think we really newed this
+
+var GRID = {
+    horizontal: window.innerWidth,
+    vertical: window.innerHeight
+};
 
 function setHarmonicMode(state, harmonicMode, muteChange, currentTime) {
     var newState = setActiveKeys(Object.assign({}, state, {
@@ -163,10 +170,14 @@ function tickFn(state, currentTime, currentTick) {
         deltaX = _state$accumulatedDel2.deltaX,
         deltaY = _state$accumulatedDel2.deltaY;
 
-    var pendingPos = state.pendingMousePosition || {};
+    var pendingPos = state.pendingMousePosition;
 
-    var arrival = deque(true);
+    var lastRealArrival = state.currentArrival || state.lastArrival;
+    var newArrival = deque(true);
+    //console.log("newarrival", newArrival);
+    var arrival = newArrival || lastRealArrival;
     if (arrival) {
+        //console.log("has arrival", arrival);
 
         // only play every-other, and sometimes add extra beats when playing from queue
         var rand = Math.random();
@@ -175,6 +186,7 @@ function tickFn(state, currentTime, currentTick) {
         var shouldNotPlayExtra = rand > document.getElementById("playExtra").value; // only play extra beats sometimes
         var shouldPauseExtra = rand < document.getElementById("pauseExtra").value; // add extra pauses tometimes
 
+        // make the music interesting
         if (shouldNotPlay && shouldNotPlayExtra) {
             return state;
         } else if (shouldPauseExtra) {
@@ -182,13 +194,17 @@ function tickFn(state, currentTime, currentTick) {
             return state;
         }
         // redo dequeue to actually not only peek
-        arrival = deque();
+        if (newArrival) {
+            deque();
+        }
+
         //console.log("Arrival happened", arrival);
         var location = getLocationFromItem(arrival);
-        pendingPos.horizontal = location.horizontal;
-        pendingPos.vertical = location.vertical;
+        pendingPos = location;
+        //pendingPos.horizontal = location.horizontal;
+        //pendingPos.vertical = location.vertical;
     } else {
-        //console.log("no arrival");
+        console.warn("no arrival");
     }
 
     var newHoriz = void 0,
@@ -196,11 +212,12 @@ function tickFn(state, currentTime, currentTick) {
     if (pendingPos) {
         //newHoriz = SURFACE_AREA_SIZE - SURFACE_AREA_SIZE * pendingPos.horizontal;
         //newVert = SURFACE_AREA_SIZE * pendingPos.vertical;
-        newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.horizontal));
-        newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, pendingPos.vertical));
+        newHoriz = Math.max(0, Math.min(GRID.horizontal - 1, pendingPos.horizontal));
+        newVert = Math.max(0, Math.min(GRID.vertical - 1, pendingPos.vertical));
     } else {
-        newHoriz = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.horizontal + deltaY));
-        newVert = Math.max(0, Math.min(SURFACE_AREA_SIZE - 1, state.mousePosition.vertical + deltaX));
+        //console.error("NO PENDINGPOS");
+        newHoriz = Math.max(0, Math.min(GRID.horizontal - 1, state.mousePosition.horizontal));
+        newVert = Math.max(0, Math.min(GRID.vertical - 1, state.mousePosition.vertical));
     }
     var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
     var mousePosition = mousePositionChanged ? {
@@ -221,7 +238,9 @@ function tickFn(state, currentTime, currentTick) {
             deltaY: 0
         },
         pendingMousePosition: undefined,
-        patternStepCounter: patternStepCounter
+        patternStepCounter: patternStepCounter,
+        currentArrival: newArrival,
+        lastArrival: lastRealArrival
     }), 'treatment');
 }
 
@@ -249,11 +268,11 @@ var _state = setVoicing(setHarmonicMode({
     currentTime: 0,
     currentTick: 0,
     currentVoices: [],
-    keyboards: [makeKeyboard(50, 3, 5, 'vertical'), makeKeyboard(50, 3, 9, 'horizontal')],
+    keyboards: [makeKeyboard(50, 3, 5, 'horizontal'), makeKeyboard(50, 3, 9, 'vertical')],
     isPlaying: false,
     mousePosition: {
-        horizontal: SURFACE_AREA_SIZE / 2,
-        vertical: SURFACE_AREA_SIZE / 2
+        horizontal: GRID.horizontal / 2,
+        vertical: GRID.vertical / 2
     },
     accumulatedDelta: {
         deltaX: 0,
@@ -276,7 +295,7 @@ var _state = setVoicing(setHarmonicMode({
         patternId: '1',
         voicing: 'chordMelody',
         articulation: 'legato',
-        velocity: 20,
+        velocity: 27,
         outputType: 'piano',
         outputControls: {
             piano: {
@@ -286,10 +305,38 @@ var _state = setVoicing(setHarmonicMode({
     }
 }, 'diatonic', true, 0), 'chordMelody', true, 0);
 
+// debug render keyboard
+if (DEBUG) {
+    var k2 = _state.keyboards[0];
+    var k1 = _state.keyboards[1];
+    var xmap = document.getElementById("mapid");
+    k1.activeKeys.forEach(function (key, index) {
+        var d = document.createElement("div");
+        d.className = "key1 kh-" + index;
+        d.style.position = "absolute";
+        d.style.top = key.startPos + "px";
+        d.style.right = 0;
+        d.style.width = key.height + "px";
+        xmap.appendChild(d);
+        xmap.style.position = "relative";
+    }, undefined);
+    k2.activeKeys.forEach(function (key, index) {
+        var d = document.createElement("div");
+        d.className = "key2 kv-" + index;
+        d.style.position = "absolute";
+        d.style.left = key.startPos + "px";
+        d.style.top = 0;
+        d.style.width = key.width + "px";
+        xmap.appendChild(d);
+        xmap.style.position = "relative";
+    }, undefined);
+}
+
 //window.state = state;
 
 var repeatToken = void 0;
 var compressor = new Tone.Gain(1.0).toMaster();
+//let compressor = new Tone.Compressor(10,10).toMaster();
 function anders() {
     //var activeKeys = setActiveKeys(state);
     //state = setActiveKeys(Object.assign({}, state));
@@ -342,17 +389,17 @@ function anders() {
         //     //_state = moveCursor(_state, Math.random(), Math.random());
         //     //console.log("interval", state.pendingMousePosition);
         // }, 1500);
-        document.getElementById("zone").onmousemove = function (e) {
-            var deltaX = e.movementX;
-            var deltaY = -e.movementY;
-            //console.log(e);
-            //_state = retrigger(_state, _state.currentTime);
-            //_state.isPlaying = true;
-            //console.log("mouse", deltaX, deltaY);
+        // document.getElementById("mapid").onmousemove = function (e) {
+        //     var deltaX = e.movementX;
+        //     var deltaY = -e.movementY;
+        //     //console.log(e);
+        //     //_state = retrigger(_state, _state.currentTime);
+        //     //_state.isPlaying = true;
+        //     //console.log("mouse", deltaX, deltaY);
 
-            updateState(moveCursor2, e.x, e.y);
-            //_state.isPlaying = false;
-        };
+        //     //updateState(moveCursor2, e.x, e.y);
+        //     //_state.isPlaying = false;
+        // };
     }, 1);
 }
 
@@ -401,7 +448,7 @@ function getMovement(target, currentPos, grid) {
 
     var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal;
     var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
-    //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
+    console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
     // Get delta with FACTOR and boundary check within grid
     var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
 
@@ -421,15 +468,15 @@ function getOneDirection(target, currentPos, grid) {
     }
 }
 
-(function loop() {
-    var rand = Math.round(Math.random() * (600 - 100)) + 100;
+// (function loop() {
+//     var rand = Math.round(Math.random() * (600 - 100)) + 100;
 
-    //console.log("sleep", rand);
-    setTimeout(function () {
-        ofCourseIStillLoveYou(rand, false);
-        loop();
-    }, rand);
-})();
+//     //console.log("sleep", rand);
+//     setTimeout(function () {
+//         ofCourseIStillLoveYou(rand, false);
+//         loop();
+//     }, rand);
+// }());
 
 var target;
 
@@ -439,10 +486,32 @@ var target;
  */
 function getLocationFromItem(item) {
     // resolve coordinates to pos.
-    return ofCourseIStillLoveYou(300 + 1, false);
+    var lat = item[3];
+    var lng = item[4];
+    var pos = L.latLng(lat, lng);
+    //console.log("POS", pos);
+    var target = mymap.latLngToContainerPoint(pos);
+    target.horizontal = target.x;
+    target.vertical = target.y;
+    //console.info("target from point on map",target);
+    //return ofCourseIStillLoveYou(300 +1, false);
+
+    var grid = GRID;
+    console.log("Y", _state.mousePosition);
+    var currentPos = _state.mousePosition || { horizontal: grid.horizontal / 2, vertical: grid.vertical / 2 };
+    //console.log("currentPos", currentPos);
+    //console.log("sleep", sleep);
+    //console.log(target);
+    var movement = getMovement(target, currentPos, grid);
+    //console.log("movement", movement);
+    var newLocation = getNewLocation(movement, currentPos, grid);
+    var safeLocation = getSmoothLocation(target, newLocation, movement);
+    //console.info("safelocation",safeLocation);
+    return safeLocation;
 }
 
 function ofCourseIStillLoveYou(sleep, update) {
+    console.error("OF COURSE I STILL LOVE YOU CALLED");
     var grid = { horizontal: 600, vertical: 600 };
     var currentPos = _state.mousePosition;
     //console.log("currentPos", currentPos);
@@ -514,8 +583,8 @@ loadPiano(compressor).then(function () {
 });
 
 function loadPiano(dest) {
-    piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
-    return piano.load('piano/');
+    piano = new TonePiano.Piano([30, 108], 3, false).connect(dest);
+    return piano.load('Salamander/');
 }
 
 function updateState(actionFn) {
@@ -608,7 +677,11 @@ function setActiveKeys(state) {
             var valueInCycle = noteValue % intervalSum;
             return lodash.includes(intervalSteps, valueInCycle);
         });
-        var keyWidth = SURFACE_AREA_SIZE / (newActiveKeys.length + scale.chromaticSizeAdjust);
+
+        var gridSize = GRID[keyboard.orientation];
+
+        var keyWidth = gridSize / (newActiveKeys.length + scale.chromaticSizeAdjust);
+        console.log("keywidth", keyWidth);
         var activeKeysWithSizes = newActiveKeys.map(function (key, idx) {
             return {
                 key: key,
@@ -715,6 +788,8 @@ var getVoicesToDisplay = function getVoicesToDisplay(voices, controls) {
     });
 };
 
+var markers = [];
+
 function renderUI(state) {
     var voicesToPlay = getVoicesToPlay(state);
     var currentTime = getCurrentTime(state);
@@ -734,7 +809,7 @@ function renderUI(state) {
     lastPlay = currentplay;
 
     voicesToPlay.currentTime += 0.1;
-
+    console.log(voicesToPlay.voices);
     //console.warn(state.currentTime);
     Tone.Draw.schedule(function () {
 
@@ -749,11 +824,32 @@ function renderUI(state) {
         // }
 
         var latlng = [].concat(sthlm);
-        latlng[0] = latlng[0] + Math.random() / 10;
-        latlng[1] = latlng[1] + Math.random() / 10;
+        //latlng[0] = latlng[0] + Math.random() / 10;
+        //latlng[1] = latlng[1] + Math.random() / 10;
         //console.log("sthlm", sthlm, latlng);
-        var marker = L.marker(latlng, { icon: icon }).addTo(mymap);
+        if (state.currentArrival) {
+            var lat = state.currentArrival[3];
+            var lng = state.currentArrival[4];
+            var marker = L.marker([lat, lng], { icon: icon }).addTo(mymap);
+            markers.push(marker);
+        }
 
+        if (true && state.mousePosition.horizontal) {
+            var p = L.point(state.mousePosition.horizontal, state.mousePosition.vertical);
+            var latlng = mymap.containerPointToLatLng(p);
+            var marker2 = L.marker(latlng, { icon: iconMousePos }).addTo(mymap);
+            markers.push(marker2);
+        }
+
+        if (markers.length > 70) {
+            var m = markers.shift();
+            m.remove();
+            if (true) {
+                var m2 = markers.shift();
+                m2.remove();
+                console.log("markers clean up", markers.length);
+            }
+        }
         // if(document.getElementById("showTarget").checked) {
         //     var targetDot = document.getElementById("targetdot");
         //     targetDot.style.left = target.horizontal + 'px';
@@ -852,7 +948,7 @@ function playVoice(voice, time) {
 
         var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
         var velocity = voice.velocity / 128;
-        //console.log(heldNotes);
+        console.log("velocity", velocity);
         if (heldNotes.has(note)) {
             piano.keyUp(note, time);
             heldNotes.delete(note);
@@ -891,6 +987,8 @@ function playVoice(voice, time) {
  * 0: type (1 = metro, 2 = bus, 3 = other)
  * 1: name
  * 2: time
+ * 3: lat
+ * 4: lng
  */
 
 function getFilename() {
@@ -903,6 +1001,15 @@ fetch(getFilename()).then(function (response) {
     enqueu(json.data);
     //Tone.Transport.bpm.rampTo(300, 10);    
 });
+
+function mockSthlmDelta() {
+    //     function getNonZeroRandomNumber(){
+    //     var random = Math.floor(Math.random()*199) - 99;
+    //     if(random==0) return getNonZeroRandomNumber();
+    //     return random;
+    // }
+    return Math.random() * 0.06 - 0.03;
+}
 
 var _backingQueue = [];
 function enqueu(items) {
@@ -918,15 +1025,22 @@ function deque(peekOnly) {
         return null;
     }
 
-    // override 
-    return item;
+    // override latlng for mockdata
+    //var latlng = [].concat(sthlm);
+
+
+    // // override 
+
 
     // only return items when they have happened
-    if (true) {
+    if (isTimeInThePast(item[2])) {
+        item[3] = +sthlm[0] + mockSthlmDelta();
+        item[4] = +sthlm[1] + mockSthlmDelta();
 
         if (peekOnly) {
             return item;
         } else {
+            return item;
             return _backingQueue.shift();
         }
     }
@@ -940,13 +1054,20 @@ function deque(peekOnly) {
  * @param {string} time 
  */
 function isTimeInThePast(time) {
-    var timeparts = item[2].split(":");
+    var timeparts = time.split(":");
 
     var hour = timeparts[0];
     var min = timeparts[1];
     var seconds = timeparts[2];
 
-    var now = Date.now();
+    var now = new Date();
+    // override
+    if (now.getSeconds() % 2 === 0) {
+        return true;
+    } else {
+        return false;
+    }
+
     if (hour <= now.getHours() && minutes <= now.getMinutes() && seconds <= now.getSeconds()) {
         return true;
     }
@@ -954,7 +1075,7 @@ function isTimeInThePast(time) {
     return false;
 }
 
-var sthlm = [59.334591, 18.063240];
+var sthlm = [59.331152, 18.06735];
 var sthlm2 = [59.310, 18.04];
 var mymap = L.map('mapid').setView(sthlm, 13);
 
@@ -966,6 +1087,12 @@ var icon = L.divIcon({
     className: 'map-marker ' + "xx",
     iconSize: null,
     html: '<div class="icon" style=""></div>'
+});
+
+var iconMousePos = L.divIcon({
+    className: 'map-marker ' + "xx",
+    iconSize: null,
+    html: '<div class="icon2" style=""></div>'
 });
 
 var marker = L.marker(sthlm, { icon: icon }).addTo(mymap);
