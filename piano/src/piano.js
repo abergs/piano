@@ -11,25 +11,6 @@ StartAudioContext(Tone.context).then(function () {
     console.log("Started");
 });
 
-// var state = {
-//     keyboards: [makeKeyboard(50, 3, 5, 'vertical',[1]), makeKeyboard(50, 3, 9, 'horizontal',[2,3,4])],
-//     controls: {
-//         transposition: 0,
-//         voicesOn:{
-//             "1": true,
-//             "2": true,
-//             "3": true,
-//             "4":true
-//         },
-//         harmonicMode: 'diatonic',
-//         treament: 'chord',
-//         patternOn:false
-//     },
-//     currentTick: 0,
-//     mousePosition: 7,
-//     isCursorsSuppressed: false
-// };
-
 var SCALES = {
     diatonic: {
         intervals: [2, 2, 1, 2, 2, 2, 1],
@@ -108,8 +89,23 @@ function tickFn(state, currentTime, currentTick) {
         , deltaX = _state$accumulatedDel2.deltaX
         , deltaY = _state$accumulatedDel2.deltaY;
 
-    var pendingPos = state.pendingMousePosition;
-    //console.log("pending", pendingPos);
+    var pendingPos = state.pendingMousePosition || {};
+
+    var rand = Math.random();
+    if(currentTick % 2 === 0 && rand > 0.3)  {
+        return state;
+    }
+
+    var arrival = deque();
+    if (arrival) {
+        console.log("Arrival happened", arrival);
+        var location = getLocationFromItem(arrival);
+        pendingPos.horizontal = location.horizontal;
+        pendingPos.vertical = location.vertical;
+    } else {
+        console.log("no arrival");
+    }
+
     var newHoriz = void 0
         , newVert = void 0;
     if (pendingPos) {
@@ -227,7 +223,7 @@ function anders() {
         //console.log("state", _state);
         updateState(tickFn, time, tick);
 
-    }, '16n');
+    }, "16n");
 
 
     Tone.Transport.start("+0.5");
@@ -241,125 +237,7 @@ function anders() {
         //return retrigger(newState, currentTime);
     }
 
-    function moveCursor2(state, x, y) {
-        return Object.assign({}, state, {
-            pendingMousePosition: {
-                horizontal: x,
-                vertical: y
-            }
-        });
-    }
-
-    // function test() {
-    //     var currentPos = { horizonta: 0, vertical: 0 };
-
-    //     var grid = { horizontal: 500, vertical: 500 };
-    //     var target = { horizontal: 100, vertical: 100 };
-    //     var movement = getMovement(target, currentPos, grid);
-
-    //     var location = getNewLocation(movement, currentPos, grid);
-    // }
-
-    function getNewLocation(movement, currentPos, grid) {
-
-        // get new location using boundary check
-        return {
-            horizontal: Math.max(0, Math.min(grid.horizontal - 1,
-                currentPos.horizontal + movement.horizontal)),
-            vertical: Math.max(0, Math.min(grid.horizontal - 1,
-                currentPos.vertical + movement.vertical))
-        };
-    }
-
-    function diff(x, y) {
-        return Math.abs(x - y);
-    }
-
-    function getMovement(target, currentPos, grid) {
-
-        //console.log("target", target);
-        // go up or down or stay still?
-        var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
-
-        // go right left or stay still
-        var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
-
-        var FACTOR = 20;
-
-        var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal
-        var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
-        //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
-        // Get delta with FACTOR and boundary check within grid
-        var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
-
-        var deltaVertical = verticalMovement * FACTOR * dynamicFactorVertical;
-
-        var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
-        return result;
-    }
-
-    function getOneDirection(target, currentPos, grid) {
-        if (target > currentPos) {
-            return 1;
-        } else if (target < currentPos) {
-            return -1;
-        }
-        else {
-            return 0;
-        }
-    }
-
-    (function loop() {
-        var rand = Math.round(Math.random() * (600 - 100)) + 100;
-
-        //console.log("sleep", rand);
-        setTimeout(function () {
-            ofCourseIStillLoveYou(rand);
-            loop();
-        }, rand);
-    }());
-
-    var target;
-    function ofCourseIStillLoveYou(sleep) {
-        var grid = { horizontal: 600, vertical: 600 };
-        var currentPos = _state.mousePosition;
-        //console.log("currentPos", currentPos);
-        console.log("sleep", sleep);
-        if (!target || sleep > 300) {
-            target = {
-                horizontal: grid.horizontal * Math.random(),
-                vertical: grid.vertical * Math.random()
-            };
-        }
-        console.log(target);
-        var movement = getMovement(target, currentPos, grid);
-        //console.log("movement", movement);
-        var newLocation = getNewLocation(movement, currentPos, grid);
-        var safeLocation = getSmoothLocation(target, newLocation, movement);
-        //console.log("new location", newLocation, safeLocation);
-        updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
-    }
-
-    function getSmoothLocation(target, newLocation, movement) {
-        // smoother to balance movements when we are close enough
-        var location = {
-            horizontal: smoothValue(target.horizontal, newLocation.horizontal, movement.horizontal),
-            vertical: smoothValue(target.vertical, newLocation.vertical, movement.vertical)
-        };
-
-        return location;
-    }
-
-    function smoothValue(target, newLocation, movement) {
-        // smoother to balance movements when we are close enough
-        var diff = Math.abs(target - newLocation);
-        // close enough
-        if (diff < Math.abs(movement)) {
-            return target;
-        }
-        // just original propsal
-        return newLocation;
-    }
+    
 
     setTimeout(() => {
         _state.isPlaying = true;
@@ -402,8 +280,140 @@ function anders() {
     }, 1);
 }
 
-//var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-//StartAudioContext(Tone.context, document.documentElement);
+function moveCursor2(state, x, y) {
+    return Object.assign({}, state, {
+        pendingMousePosition: {
+            horizontal: x,
+            vertical: y
+        }
+    });
+}
+
+// function test() {
+//     var currentPos = { horizonta: 0, vertical: 0 };
+
+//     var grid = { horizontal: 500, vertical: 500 };
+//     var target = { horizontal: 100, vertical: 100 };
+//     var movement = getMovement(target, currentPos, grid);
+
+//     var location = getNewLocation(movement, currentPos, grid);
+// }
+
+function getNewLocation(movement, currentPos, grid) {
+
+    // get new location using boundary check
+    return {
+        horizontal: Math.max(0, Math.min(grid.horizontal - 1,
+            currentPos.horizontal + movement.horizontal)),
+        vertical: Math.max(0, Math.min(grid.horizontal - 1,
+            currentPos.vertical + movement.vertical))
+    };
+}
+
+function diff(x, y) {
+    return Math.abs(x - y);
+}
+
+function getMovement(target, currentPos, grid) {
+
+    //console.log("target", target);
+    // go up or down or stay still?
+    var verticalMovement = getOneDirection(target.vertical, currentPos.vertical);
+
+    // go right left or stay still
+    var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
+
+    var FACTOR = 20;
+
+    var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal
+    var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
+    //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
+    // Get delta with FACTOR and boundary check within grid
+    var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
+
+    var deltaVertical = verticalMovement * FACTOR * dynamicFactorVertical;
+
+    var result = { horizontal: deltaHorizontal, vertical: deltaVertical, factor: FACTOR };
+    return result;
+}
+
+function getOneDirection(target, currentPos, grid) {
+    if (target > currentPos) {
+        return 1;
+    } else if (target < currentPos) {
+        return -1;
+    }
+    else {
+        return 0;
+    }
+}
+
+(function loop() {
+    var rand = Math.round(Math.random() * (600 - 100)) + 100;
+
+    //console.log("sleep", rand);
+    setTimeout(function () {
+        ofCourseIStillLoveYou(rand, false);
+        loop();
+    }, rand);
+}());
+
+var target;
+
+/**
+ * item from data points
+ * @param {object} item 
+ */
+function getLocationFromItem(item) {
+    // resolve coordinates to pos.
+    return ofCourseIStillLoveYou(300 +1, false);
+}
+
+function ofCourseIStillLoveYou(sleep, update) {
+    var grid = { horizontal: 600, vertical: 600 };
+    var currentPos = _state.mousePosition;
+    //console.log("currentPos", currentPos);
+    //console.log("sleep", sleep);
+    if (!target || sleep > 300) {
+        target = {
+            horizontal: grid.horizontal * Math.random(),
+            vertical: grid.vertical * Math.random()
+        };
+    }
+    //console.log(target);
+    var movement = getMovement(target, currentPos, grid);
+    //console.log("movement", movement);
+    var newLocation = getNewLocation(movement, currentPos, grid);
+    var safeLocation = getSmoothLocation(target, newLocation, movement);
+    //console.log("new location", newLocation, safeLocation);
+    if (update) {
+        updateState(moveCursor2, safeLocation.horizontal, safeLocation.vertical);
+    }else {
+        return safeLocation;
+    }
+}
+
+function getSmoothLocation(target, newLocation, movement) {
+    // smoother to balance movements when we are close enough
+    var location = {
+        horizontal: smoothValue(target.horizontal, newLocation.horizontal, movement.horizontal),
+        vertical: smoothValue(target.vertical, newLocation.vertical, movement.vertical)
+    };
+
+    return location;
+}
+
+function smoothValue(target, newLocation, movement) {
+    // smoother to balance movements when we are close enough
+    var diff = Math.abs(target - newLocation);
+    // close enough
+    if (diff < Math.abs(movement)) {
+        return target;
+    }
+    // just original propsal
+    return newLocation;
+}
+
 var fakei = 0;
 function moveCursor(state, deltaX, deltaY) {
     var _state$accumulatedDel = state.accumulatedDelta
@@ -418,34 +428,17 @@ function moveCursor(state, deltaX, deltaY) {
         accumulatedDelta: newDelta
     });
 }
+
 function getRandomInt(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
 }
 
-//   var f = function () {
-
-//     console.log(1);
-//     requestAnimationFrame(f);
-// };
-//   requestAnimationFrame(f);
-
 loadPiano(compressor).then(() => {
     console.log("piano loaded");
     anders();
 });
-
-
-//  function start(element) {
-//     masterGain = new Tone.Gain(1.0).toMaster();
-//     compressor = new Tone.Compressor().connect(masterGain);
-//     piano = new TonePiano.Piano([21, 94],1,true).connect(compressor);
-//     playing = true;
-//     piano.load('./static_assets/Salamander/').then(function() {
-//         return begin(element);
-//     });
-// }
 
 function loadPiano(dest) {
     piano = new TonePiano.Piano([30, 108], 1, true).connect(dest);
@@ -649,26 +642,23 @@ var getVoicesToDisplay = function (voices, controls) {
     });
 }
 
-var mousedot = document.getElementById("mousedot");
-var counter = 0;
 function renderUI(state) {
-
-
     var voicesToPlay = getVoicesToPlay(state);
-    //console.log(state, voicesToPlay);
     var currentTime = getCurrentTime(state);
 
-    var s = "";
+    // protect from looping the same play
+    var currentplay = "";
     voicesToPlay.voices.forEach(function (voice) {
         if (voice.currentKey) {
-            s += voice.currentKey.index;
+            currentplay += voice.currentKey.index;
         }
     }, this);
-    //console.log(s, lastPlay);
-    if (s == lastPlay) {
+
+    // if same as last, don't play it
+    if (currentplay === lastPlay) {
         return;
     }
-    lastPlay = s;
+    lastPlay = currentplay;
 
     voicesToPlay.currentTime += 0.1;
 
@@ -686,7 +676,6 @@ function renderUI(state) {
         }
 
     }, voicesToPlay.currentTime);
-    //console.log(voicesToPlay);
     playSounds(voicesToPlay);
 }
 
@@ -700,8 +689,6 @@ function getStar() {
 }
 var els = [];
 
-//50,3,9 horizontal
-//50,3,5 vertical
 function makeKeyboard(size, startOctave, startPitch, orientation, voiceAssignments) {
     var keys = [];
     var start = startOctave * 12 + startPitch;
@@ -731,17 +718,6 @@ function playSounds(play) {
 
     if (play.voices.length > 0) {
 
-        // var s = "";
-        // play.voices.forEach(function(voice) {
-        //     s += voice.currentKey.index;
-        // }, this);
-        // console.log(s, lastPlay);
-        // if(s == lastPlay) {
-        //     console.info("SKIPP");
-        //     return;
-        // }
-
-        //console.log("playsounds2");
         var now = Tone.now();
         if (play.currentTime <= now) {
             console.error("time is in Past", play.currentTime, "vs", now);
@@ -749,22 +725,9 @@ function playSounds(play) {
 
         }
         play.voices.forEach(function (voice) {
-            // Tone.Draw.schedule(function(){
-            //     var el = document.getElementById("zone");
-            //     if(voice.currentKey){
-            //     var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
-            //     //el.innerText += ", " + note;
-            // }
-
-            // }, play.currentTime)
             playVoice(voice, play.currentTime);
         }, this);
 
-
-
-        //lastPlay = s;
-    } else {
-        //console.info("XX", lastPlay, play);
     }
 }
 
@@ -830,4 +793,80 @@ function playVoice(voice, time) {
                 break;
         }
     }
+}
+
+
+
+/**
+ * 
+ * 
+ * 
+ * DATA
+ * 
+ * Get's the presorted data
+ * Adds to queue
+ * Queue only allows pulling events that have happened
+ * 
+ * 
+ * item:
+ * 0: type (1 = metro, 2 = bus, 3 = other)
+ * 1: name
+ * 2: time
+ */
+
+function getFilename() {
+    return "data/mock.json";
+}
+
+fetch(getFilename()).then((response) => {
+    return response.json()
+}).then((json) => {
+    enqueu(json.data);
+    //Tone.Transport.bpm.rampTo(300, 10);    
+});
+
+var _backingQueue = [];
+function enqueu(items) {
+    _backingQueue = _backingQueue.concat(items);
+}
+
+function deque() {
+    console.log(_backingQueue); 
+    var item = _backingQueue[0];
+
+    // short circuit if no data yet
+    if (!item) {
+        return null;
+    }
+
+    // only return items when they have happened
+    if (true || isTimeInThePast(item[2])) {
+        return _backingQueue.shift();
+    }
+
+    // return null by default
+    return null;
+}
+
+/**
+ * 
+ * @param {string} time 
+ */
+function isTimeInThePast(time) {
+    var timeparts = item[2].split(":");
+
+    var hour = timeparts[0];
+    var min = timeparts[1];
+    var seconds = timeparts[2];
+
+    var now = Date.now();
+    if (
+        hour <= now.getHours() &&
+        minutes <= now.getMinutes() &&
+        seconds <= now.getSeconds()
+    ) {
+        return true;
+    }
+
+    return false;
 }
