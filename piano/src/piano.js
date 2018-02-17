@@ -815,7 +815,7 @@ function playVoice(voice, time) {
  */
 
 function getFilename() {
-    return "data/mock.json";
+    return "data/mock.json?v=" + new Date();
 }
 
 fetch(getFilename()).then((response) => {
