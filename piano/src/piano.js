@@ -91,13 +91,26 @@ function tickFn(state, currentTime, currentTick) {
 
     var pendingPos = state.pendingMousePosition || {};
 
-    var rand = Math.random();
-    if(currentTick % 2 === 0 && rand > 0.3)  {
-        return state;
-    }
+    
 
-    var arrival = deque();
+    var arrival = deque(true);
     if (arrival) {
+        
+        // only play every-other, and sometimes add extra beats when playing from queue
+        var rand = Math.random();
+        var isOdd = currentTick % 2 === 0;
+        var shouldNotPlay = isOdd == false;
+        var shouldNotPlayExtra = rand > document.getElementById("playExtra").value; // only play extra beats sometimes
+        var shouldPauseExtra = rand < document.getElementById("pauseExtra").value; // add extra pauses tometimes
+
+        if(shouldNotPlay && shouldNotPlayExtra)  {
+            return state;
+        } else if(shouldPauseExtra) {
+            console.warn("Extra pause");
+            return state;
+        }
+        // redo dequeue to actually not only peek
+        arrival = deque();
         console.log("Arrival happened", arrival);
         var location = getLocationFromItem(arrival);
         pendingPos.horizontal = location.horizontal;
@@ -830,7 +843,7 @@ function enqueu(items) {
     _backingQueue = _backingQueue.concat(items);
 }
 
-function deque() {
+function deque(peekOnly) {
     console.log(_backingQueue); 
     var item = _backingQueue[0];
 
@@ -839,9 +852,17 @@ function deque() {
         return null;
     }
 
+    // override 
+    return item;
+
     // only return items when they have happened
     if (true || isTimeInThePast(item[2])) {
-        return _backingQueue.shift();
+
+        if(peekOnly) {
+            return item;
+        }else {
+            return _backingQueue.shift();            
+        }
     }
 
     // return null by default
