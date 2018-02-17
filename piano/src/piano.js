@@ -106,17 +106,17 @@ function tickFn(state, currentTime, currentTick) {
         if(shouldNotPlay && shouldNotPlayExtra)  {
             return state;
         } else if(shouldPauseExtra) {
-            console.warn("Extra pause");
+            //console.warn("Extra pause");
             return state;
         }
         // redo dequeue to actually not only peek
         arrival = deque();
-        console.log("Arrival happened", arrival);
+        //console.log("Arrival happened", arrival);
         var location = getLocationFromItem(arrival);
         pendingPos.horizontal = location.horizontal;
         pendingPos.vertical = location.vertical;
     } else {
-        console.log("no arrival");
+        //console.log("no arrival");
     }
 
     var newHoriz = void 0
@@ -680,19 +680,25 @@ function renderUI(state) {
 
         //console.warn("DRAW", state.mousePosition);
         //do drawing or DOM manipulation here
-        var el = getStar();
-        el.style.left = state.mousePosition.horizontal + 'px';
-        el.style.top = state.mousePosition.vertical + 'px';
-        if (els.length > 30) {
-            var old = els.shift();
-            zone.removeChild(old);
-        }
+        // var el = getStar();
+        // el.style.left = state.mousePosition.horizontal + 'px';
+        // el.style.top = state.mousePosition.vertical + 'px';
+        // if (els.length > 30) {
+        //     var old = els.shift();
+        //     zone.removeChild(old);
+        // }
 
-        if(document.getElementById("showTarget").checked) {
-            var targetDot = document.getElementById("targetdot");
-            targetDot.style.left = target.horizontal + 'px';
-            targetDot.style.top = target.vertical + 'px';
-        }
+        var latlng = [].concat(sthlm);
+        latlng[0] = latlng[0] + Math.random() / 10;
+        latlng[1] = latlng[1] + Math.random() / 10;
+        //console.log("sthlm", sthlm, latlng);
+        var marker = L.marker(latlng, {icon: icon}).addTo(mymap);        
+
+        // if(document.getElementById("showTarget").checked) {
+        //     var targetDot = document.getElementById("targetdot");
+        //     targetDot.style.left = target.horizontal + 'px';
+        //     targetDot.style.top = target.vertical + 'px';
+        // }
 
     }, voicesToPlay.currentTime);
     playSounds(voicesToPlay);
@@ -850,7 +856,7 @@ function enqueu(items) {
 }
 
 function deque(peekOnly) {
-    console.log(_backingQueue); 
+    //console.log(_backingQueue); 
     var item = _backingQueue[0];
 
     // short circuit if no data yet
@@ -897,3 +903,27 @@ function isTimeInThePast(time) {
 
     return false;
 }
+
+
+var sthlm = [59.334591, 18.063240];
+var sthlm2 = [59.310, 18.04];
+var mymap = L.map('mapid').setView(sthlm, 13);
+
+// var iconclass = iconclasses[row.iconclass]?row.iconclass:'';
+// var iconstyle = iconclass?iconclasses[iconclass]:'';
+// var icontext = iconclass?'':row.iconclass;
+
+var icon = L.divIcon({
+    className: 'map-marker '+ "xx",
+    iconSize:null,
+    html:'<div class="icon" style=""></div>'
+  });
+
+var marker = L.marker(sthlm, {icon: icon}).addTo(mymap);
+
+var CartoDB_DarkMatter = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png', {
+	attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+	subdomains: 'abcd',
+	maxZoom: 19
+});
+CartoDB_DarkMatter.addTo(mymap);
