@@ -747,6 +747,12 @@ function renderUI(state) {
             var old = els.shift();
             zone.removeChild(old);
         }
+
+        if (document.getElementById("showTarget").checked) {
+            var targetDot = document.getElementById("targetdot");
+            targetDot.style.left = target.horizontal + 'px';
+            targetDot.style.top = target.vertical + 'px';
+        }
     }, voicesToPlay.currentTime);
     playSounds(voicesToPlay);
 }

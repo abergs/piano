@@ -2,7 +2,7 @@
 <html>
 <head>
     <style>
-        #mousedot, .mousedot {
+        #mousedot, .mousedot, #targetdot{
             border-radius:100%;
             background:white;
             width:5px;
@@ -11,6 +11,11 @@
             animation: fadeout 10s 1;
             animation-fill-mode: forwards;
             box-shadow: 0 0 10px rgba(255,255,255,1);
+        }
+
+        #targetdot {
+            background:red;
+            animation:none;
         }
 
         @keyframes fadeout {
@@ -33,6 +38,7 @@
     <div id="note"></div>    
     <div id="zone" style="width:600px;height:600px; background:#222; position:relative;">
         <div id="mousedot"></div>
+        <div id="targetdot"></div>
     </div>
 
     Playextra:
@@ -40,6 +46,8 @@
     <br />
     PauseExtra
     <input type="range" min="0" max="1" value="0.1" step="0.05" id="pauseExtra">
+    ShowTargetDot
+    <input type="checkbox" checked="unchecked" id="showTarget">
     <script src="build/main.js"></script>
 </body>
 </html>
