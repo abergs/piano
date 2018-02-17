@@ -13,6 +13,20 @@ StartAudioContext(Tone.context).then(function () {
 
 var DEBUG = false;
 
+const $ = (selector) => document.querySelector(selector)
+const $$ = (selector) => document.querySelectorAll(selector)
+const on = (elem, type, listener) => elem.addEventListener(type,listener)
+
+var showTravel = $("#showTravel");
+var showKeyboards = $("#showKeyboards");
+on(showKeyboards,'change', () => {
+    if(showKeyboards.checked) {
+        $("body").classList.add("showKeyboards");
+    } else {
+        $("body").classList.remove("showKeyboards");
+    }
+});
+
 var SCALES = {
     diatonic: {
         intervals: [2, 2, 1, 2, 2, 2, 1],
@@ -122,7 +136,7 @@ function tickFn(state, currentTime, currentTick) {
             return state;
         }
         // redo dequeue to actually not only peek
-        if(newArrival){
+        if (newArrival) {
             deque();
         }
 
@@ -201,7 +215,7 @@ var _state = setVoicing(setHarmonicMode({
     currentTime: 0,
     currentTick: 0,
     currentVoices: [],
-    keyboards: [makeKeyboard(50, 3, 5, 'horizontal'), makeKeyboard(50, 3, 9, 'vertical')],
+    keyboards: [makeKeyboard(50, 3, 9, 'vertical'), makeKeyboard(50, 3, 5, 'horizontal')],
     isPlaying: false,
     mousePosition: {
         horizontal: GRID.horizontal / 2,
@@ -239,9 +253,9 @@ var _state = setVoicing(setHarmonicMode({
 }, 'diatonic', true, 0), 'chordMelody', true, 0);
 
 // debug render keyboard
-if(DEBUG){
-var k2 = _state.keyboards[0];
-var k1 = _state.keyboards[1];
+
+var k1 = _state.keyboards[0];
+var k2 = _state.keyboards[1];
 var xmap = document.getElementById("mapid");
 k1.activeKeys.forEach(function (key, index) {
     var d = document.createElement("div");
@@ -253,6 +267,7 @@ k1.activeKeys.forEach(function (key, index) {
     xmap.appendChild(d);
     xmap.style.position = "relative";
 }, this);
+
 k2.activeKeys.forEach(function (key, index) {
     var d = document.createElement("div");
     d.className = "key2 kv-" + index;
@@ -263,7 +278,6 @@ k2.activeKeys.forEach(function (key, index) {
     xmap.appendChild(d);
     xmap.style.position = "relative";
 }, this);
-}
 
 
 //window.state = state;
@@ -776,8 +790,8 @@ function renderUI(state) {
             markers.push(marker);
         }
 
-
-        if (true && state.mousePosition.horizontal) {
+        // render markers for travelpath (blue dots)
+        if (showTravel.checked && state.mousePosition.horizontal) {
             var p = L.point(state.mousePosition.horizontal, state.mousePosition.vertical);
             var latlng = mymap.containerPointToLatLng(p);
             var marker2 = L.marker(latlng, { icon: iconMousePos }).addTo(mymap);
@@ -787,10 +801,10 @@ function renderUI(state) {
         if (markers.length > 70) {
             var m = markers.shift();
             m.remove();
-            if (true || DEBUG) {
+            if (showTravel.checked) {
                 var m2 = markers.shift();
                 m2.remove();
-                console.log("markers clean up", markers.length);
+                //console.log("markers clean up", markers.length);
             }
         }
         // if(document.getElementById("showTarget").checked) {
@@ -976,10 +990,10 @@ function deque(peekOnly) {
 
     // override latlng for mockdata
     //var latlng = [].concat(sthlm);
-    
+
 
     // // override 
-    
+
 
     // only return items when they have happened
     if (isTimeInThePast(item[2])) {

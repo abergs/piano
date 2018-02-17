@@ -1,41 +1,81 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css"
-   integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
-   crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
+        crossorigin="" />
     <style>
-        #mousedot, .mousedot, #targetdot, .icon, .icon2{
-            border-radius:100%;
-            background:white;
-            width:10px;
-            height:10px;
-            position:absolute;
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            min-height: 100vh;
+            font-family: sans-serif;
+        }
+
+        body {
+            display: grid;
+            grid-template-rows: 1fr 70px;
+            grid-template-columns: auto;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .control {
+            padding: 0px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            height: 100%;
+            text-transform: uppercase;
+            font-size: 10px;
+            color: #656565;
+            font-weight: bold;
+            border: 1px solid #eee;
+            border-bottom: none;
+            border-top: none;
+        }
+
+        #mousedot,
+        .mousedot,
+        #targetdot,
+        .icon,
+        .icon2 {
+            border-radius: 100%;
+            background: white;
+            width: 10px;
+            height: 10px;
+            position: absolute;
             animation: fadeout 5s 1;
             animation-fill-mode: forwards;
-            box-shadow: 0 0 10px rgba(255,255,255,1);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 1);
         }
+
         .icon2 {
             position: relative;
-            background:blue;
-            width:6px;
-            height:6px;
-            box-shadow: 0 0 10px rgba(0,0,255,1);
+            background: blue;
+            width: 6px;
+            height: 6px;
+            box-shadow: 0 0 10px rgba(0, 0, 255, 1);
             animation: fadeout 10s 1;
             animation-fill-mode: forwards;
         }
 
-        .key1 {
-            border:1px solid rgba(255,255,255,0.3);
-            
-            width: 100vw;
-            z-index:9999;
+
+        .showKeyboards .key1 {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 100%;
+            z-index: 9999;
         }
 
-        .key2 {
-            border:1px solid rgba(255,0,0,.3);
+        .showKeyboards .key2 {
+            border: 1px solid rgba(255, 0, 0, .3);
             height: 100vh;
-            z-index:9999;
+            z-index: 9999;
         }
 
         .icon {
@@ -43,8 +83,8 @@
         }
 
         #targetdot {
-            background:red;
-            animation:none;
+            background: red;
+            animation: none;
         }
 
         @keyframes fadeout {
@@ -53,43 +93,58 @@
             }
 
             10% {
-                box-shadow: 0 0 0 rgba(0,0,0,0);
+                box-shadow: 0 0 0 rgba(0, 0, 0, 0);
                 transform: scale(0.5);
             }
 
             to {
-                opacity:0;
+                opacity: 0;
                 transform: scale(0.5);
                 /*transform: translateX(-20px) translateY(20px);*/
-            }            
+            }
         }
 
 
 
-        #mapid { height: 100vh; }
+        #mapid {
+            grid-row: 1;
+            grid-column: 1;
+            height: 100%;
+        }
     </style>
 </head>
+
 <body>
-    <div id="note"></div>    
+    <!-- <div id="note"></div>    
     <div id="zone" style="width:600px;height:600px; background:#222; position:relative;">
         <div id="mousedot"></div>
         <div id="targetdot"></div>
-    </div>
+    </div> -->
 
-    Playextra:
-    <input type="range" min="0" max="1" value="0.6" step="0.05" id="playExtra">
-    <br />
-    PauseExtra
-    <input type="range" min="0" max="1" value="0.1" step="0.05" id="pauseExtra">
-    ShowTargetDot
-    <input type="checkbox" checked="unchecked" id="showTarget">
 
     <div id="mapid"></div>
-    
-     <!-- Make sure you put this AFTER Leaflet's CSS -->
- <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"
- integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw=="
- crossorigin=""></script>
+    <div class="controls">
+        <div class="control">
+            Play extra
+            <input type="range" min="0" max="1" value="0.6" step="0.05" id="playExtra">
+        </div>
+        <div class="control">
+            Pause Extra
+            <input type="range" min="0" max="1" value="0.1" step="0.05" id="pauseExtra">
+        </div>
+        <div class="control">
+            Show travel
+            <input type="checkbox" checked id="showTravel">
+        </div>
+        <div class="control">
+            Show keyboards
+            <input type="checkbox" id="showKeyboards">
+        </div>
+    </div>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js" integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw=="
+        crossorigin=""></script>
     <script src="build/main.js"></script>
 </body>
+
 </html>

@@ -87,6 +87,26 @@ StartAudioContext(Tone.context).then(function () {
 
 var DEBUG = false;
 
+var $ = function $(selector) {
+    return document.querySelector(selector);
+};
+var $$ = function $$(selector) {
+    return document.querySelectorAll(selector);
+};
+var on = function on(elem, type, listener) {
+    return elem.addEventListener(type, listener);
+};
+
+var showTravel = $("#showTravel");
+var showKeyboards = $("#showKeyboards");
+on(showKeyboards, 'change', function () {
+    if (showKeyboards.checked) {
+        $("body").classList.add("showKeyboards");
+    } else {
+        $("body").classList.remove("showKeyboards");
+    }
+});
+
 var SCALES = {
     diatonic: {
         intervals: [2, 2, 1, 2, 2, 2, 1],
@@ -268,7 +288,7 @@ var _state = setVoicing(setHarmonicMode({
     currentTime: 0,
     currentTick: 0,
     currentVoices: [],
-    keyboards: [makeKeyboard(50, 3, 5, 'horizontal'), makeKeyboard(50, 3, 9, 'vertical')],
+    keyboards: [makeKeyboard(50, 3, 9, 'vertical'), makeKeyboard(50, 3, 5, 'horizontal')],
     isPlaying: false,
     mousePosition: {
         horizontal: GRID.horizontal / 2,
@@ -306,31 +326,31 @@ var _state = setVoicing(setHarmonicMode({
 }, 'diatonic', true, 0), 'chordMelody', true, 0);
 
 // debug render keyboard
-if (DEBUG) {
-    var k2 = _state.keyboards[0];
-    var k1 = _state.keyboards[1];
-    var xmap = document.getElementById("mapid");
-    k1.activeKeys.forEach(function (key, index) {
-        var d = document.createElement("div");
-        d.className = "key1 kh-" + index;
-        d.style.position = "absolute";
-        d.style.top = key.startPos + "px";
-        d.style.right = 0;
-        d.style.width = key.height + "px";
-        xmap.appendChild(d);
-        xmap.style.position = "relative";
-    }, undefined);
-    k2.activeKeys.forEach(function (key, index) {
-        var d = document.createElement("div");
-        d.className = "key2 kv-" + index;
-        d.style.position = "absolute";
-        d.style.left = key.startPos + "px";
-        d.style.top = 0;
-        d.style.width = key.width + "px";
-        xmap.appendChild(d);
-        xmap.style.position = "relative";
-    }, undefined);
-}
+
+var k1 = _state.keyboards[0];
+var k2 = _state.keyboards[1];
+var xmap = document.getElementById("mapid");
+k1.activeKeys.forEach(function (key, index) {
+    var d = document.createElement("div");
+    d.className = "key1 kh-" + index;
+    d.style.position = "absolute";
+    d.style.top = key.startPos + "px";
+    d.style.right = 0;
+    d.style.width = key.height + "px";
+    xmap.appendChild(d);
+    xmap.style.position = "relative";
+}, undefined);
+
+k2.activeKeys.forEach(function (key, index) {
+    var d = document.createElement("div");
+    d.className = "key2 kv-" + index;
+    d.style.position = "absolute";
+    d.style.left = key.startPos + "px";
+    d.style.top = 0;
+    d.style.width = key.width + "px";
+    xmap.appendChild(d);
+    xmap.style.position = "relative";
+}, undefined);
 
 //window.state = state;
 
@@ -834,7 +854,8 @@ function renderUI(state) {
             markers.push(marker);
         }
 
-        if (true && state.mousePosition.horizontal) {
+        // render markers for travelpath (blue dots)
+        if (showTravel.checked && state.mousePosition.horizontal) {
             var p = L.point(state.mousePosition.horizontal, state.mousePosition.vertical);
             var latlng = mymap.containerPointToLatLng(p);
             var marker2 = L.marker(latlng, { icon: iconMousePos }).addTo(mymap);
@@ -844,10 +865,10 @@ function renderUI(state) {
         if (markers.length > 70) {
             var m = markers.shift();
             m.remove();
-            if (true) {
+            if (showTravel.checked) {
                 var m2 = markers.shift();
                 m2.remove();
-                console.log("markers clean up", markers.length);
+                //console.log("markers clean up", markers.length);
             }
         }
         // if(document.getElementById("showTarget").checked) {
