@@ -2,14 +2,22 @@ var Tone = require("tone");
 var TonePiano = require('tone-piano');
 var lodash = require("lodash");
 var StartAudioContext = require("startaudiocontext");
-
-Tone.Transport.bpm.value = 60;
 Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context).then(function () {
     console.log("Started");
 });
+
+
+var BPMDefaults = {
+    max: 120,
+    default: 90,
+    supersonic: 520
+};
+
+Tone.Transport.bpm.value = BPMDefaults.default;
+
 
 var DEBUG = false;
 
@@ -35,9 +43,11 @@ on($("#onlyPlayVisible"),"change", (e) => {
     filterArrivals();
 });
 
+
 var changeBPMLabel = $("#changeBPMLabel");
 setBPMlabel(Tone.Transport.bpm.value);
 var changeBPM = $("#changeBPM");
+
 on(changeBPM, 'input', (e) => {
     setBPMlabel(e.target.value);
 });
@@ -46,10 +56,26 @@ function setBPMlabel(val) {
     changeBPMLabel.innerText = "(" + val + ")";
 }
 
+
 on(changeBPM, 'change', (e) => {
     console.log("change", e);
     Tone.Transport.bpm.rampTo(e.target.value,4);
+
+    if(e.target.value >= 120) {
+        $(".supersonic").classList.add("visible");        
+    }
 });
+
+on($("#enableSuperSonic"),"change", (e) => {
+    if(e.target.checked) {
+        changeBPM.max = BPMDefaults.supersonic
+    } else {
+        changeBPM.max = BPMDefaults.max;
+        changeBPM.value = BPMDefaults.default;
+    }
+});
+
+
 
 var SCALES = {
     diatonic: {

@@ -23,6 +23,7 @@
         .controls {
             display: flex;
             align-items: center;
+            flex: 0 1 auto;
         }
 
         .control {
@@ -38,6 +39,7 @@
             border: 1px solid #eee;
             border-bottom: none;
             border-top: none;
+            flex: 0 1 auto;
         }
 
         .xx.leaflet-marker-icon.leaflet-interactive {
@@ -109,12 +111,97 @@
             }
         }
 
+        .control.supersonic {
+            width: 0%;
+            visibility: hidden;
+            padding: 0;
+            transition: all ease-in-out 1s;
+            background: #0296ff;
+            color: white;
+            opacity: 0;
+            border-width: 0;
+        }
+
+        .control.supersonic.visible {
+            width: 100px;
+            visibility: visible;
+            padding: 0 20px;
+            opacity: 1;
+            border-width: 1px;
+        }
 
 
         #mapid {
             grid-row: 1;
             grid-column: 1;
             height: 100%;
+        }
+
+         .nicecb {
+            width: 80px;
+            height: 26px;
+            background: #333;
+            margin: 20px auto;
+            position: relative;
+            border-radius: 50px;
+            -webkit-box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.5), 0px 1px 0px rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.5), 0px 1px 0px rgba(255, 255, 255, 0.2);
+
+            transform: scale(0.75);
+            margin: 0;
+            margin-left: -7px;
+        }
+
+        input[type='range'] {
+            width: 100%;
+        }
+
+        .nicecb:after {
+            content: 'OFF';
+            color: #000;
+            position: absolute;
+            right: 10px;
+            z-index: 0;
+            font: 12px/26px Arial, sans-serif;
+            font-weight: bold;
+            text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.15);
+        }
+
+        .nicecb:before {
+            content: 'ON';
+            color: #0296ff;
+            position: absolute;
+            left: 10px;
+            z-index: 0;
+            font: 12px/26px Arial, sans-serif;
+            font-weight: bold;
+        }
+
+        .nicecb label {
+            display: block;
+            width: 34px;
+            height: 20px;
+            cursor: pointer;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            z-index: 1;
+            background: #fcfff4;
+            background: -webkit-gradient(linear, left top, left bottom, from(#fcfff4), color-stop(40%, #dfe5d7), to(#b3bead));
+            background: linear-gradient(to bottom, #fcfff4 0%, #dfe5d7 40%, #b3bead 100%);
+            border-radius: 50px;
+            -webkit-transition: all 0.4s ease;
+            transition: all 0.4s ease;
+            -webkit-box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.3);
+            box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.3);
+        }
+
+        .nicecb input[type=checkbox] {
+            visibility: hidden;
+        }
+
+        .nicecb input[type=checkbox]:checked+label {
+            left: 43px;
         }
     </style>
 </head>
@@ -141,19 +228,35 @@
             <span>BPM
                 <span id="changeBPMLabel"></span>
             </span>
-            <input type="range" min="20" max="520" value="60" step="10" id="changeBPM">
+            <input type="range" min="20" max="120" value="90" step="10" id="changeBPM">
+        </div>
+        <div class="control supersonic">
+            Super sonic
+            <div class="nicecb">  
+                <input type="checkbox" value="None" id="enableSuperSonic" />
+                <label for="enableSuperSonic"></label>
+            </div>
         </div>
         <div class="control">
-                Only play what you see
-                <input type="checkbox" id="onlyPlayVisible" checked>
+            Only play what you see
+            <div class="nicecb">  
+                <input type="checkbox" value="None" id="onlyPlayVisible" checked />
+                <label for="onlyPlayVisible"></label>
             </div>
+        </div>
         <div class="control">
             Show travel
-            <input type="checkbox" id="showTravel">
+            <div class="nicecb">  
+                <input type="checkbox" value="None" id="showTravel"  />
+                <label for="showTravel"></label>
+            </div>
         </div>
         <div class="control">
             Show keyboards
-            <input type="checkbox" id="showKeyboards">
+            <div class="nicecb">  
+                <input type="checkbox" value="None" id="showKeyboards"  />
+                <label for="showKeyboards"></label>
+            </div>
         </div>
     </div>
     <!-- Make sure you put this AFTER Leaflet's CSS -->

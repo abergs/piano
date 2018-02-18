@@ -23575,14 +23575,20 @@ var Tone = __webpack_require__(5);
 var TonePiano = __webpack_require__(6);
 var lodash = __webpack_require__(11);
 var StartAudioContext = __webpack_require__(14);
-
-Tone.Transport.bpm.value = 60;
 Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context).then(function () {
     console.log("Started");
 });
+
+var BPMDefaults = {
+    max: 120,
+    default: 90,
+    supersonic: 520
+};
+
+Tone.Transport.bpm.value = BPMDefaults.default;
 
 var DEBUG = false;
 
@@ -23619,6 +23625,7 @@ on($("#onlyPlayVisible"), "change", function (e) {
 var changeBPMLabel = $("#changeBPMLabel");
 setBPMlabel(Tone.Transport.bpm.value);
 var changeBPM = $("#changeBPM");
+
 on(changeBPM, 'input', function (e) {
     setBPMlabel(e.target.value);
 });
@@ -23630,6 +23637,19 @@ function setBPMlabel(val) {
 on(changeBPM, 'change', function (e) {
     console.log("change", e);
     Tone.Transport.bpm.rampTo(e.target.value, 4);
+
+    if (e.target.value >= 120) {
+        $(".supersonic").classList.add("visible");
+    }
+});
+
+on($("#enableSuperSonic"), "change", function (e) {
+    if (e.target.checked) {
+        changeBPM.max = BPMDefaults.supersonic;
+    } else {
+        changeBPM.max = BPMDefaults.max;
+        changeBPM.value = BPMDefaults.default;
+    }
 });
 
 var SCALES = {
