@@ -15,7 +15,7 @@ var DEBUG = false;
 
 const $ = (selector) => document.querySelector(selector)
 const $$ = (selector) => document.querySelectorAll(selector)
-const on = (elem, type, listener) => elem.addEventListener(type, listener)
+const on = (elem, type, listener) => type.split(" ").forEach((et) => elem.addEventListener(et, listener));
 
 var showTravel = $("#showTravel");
 var showKeyboards = $("#showKeyboards");
@@ -27,6 +27,22 @@ on(showKeyboards, 'change', () => {
     } else {
         $("body").classList.remove("showKeyboards");
     }
+});
+
+var changeBPMLabel = $("#changeBPMLabel");
+setBPMlabel(Tone.Transport.bpm.value);
+var changeBPM = $("#changeBPM");
+on(changeBPM, 'input', (e) => {
+    setBPMlabel(e.target.value);
+});
+
+function setBPMlabel(val) {
+    changeBPMLabel.innerText = "(" + val + ")";
+}
+
+on(changeBPM, 'change', (e) => {
+    console.log("change", e);
+    Tone.Transport.bpm.value = e.target.value;
 });
 
 var SCALES = {
@@ -164,6 +180,9 @@ function tickFn(state, currentTime, currentTick) {
         newVert = Math.max(0, Math.min(GRID.vertical - 1, state.mousePosition.vertical));
     }
     var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
+    if(!mousePositionChanged) {
+        //console.error("no change", mousePositionChanged);
+    }
     var mousePosition = mousePositionChanged ? {
         horizontal: newHoriz,
         vertical: newVert
@@ -790,6 +809,8 @@ function renderUI(state) {
             var lat = state.currentArrival[3];
             var lng = state.currentArrival[4];
 
+            //mymap.flyTo([lat, lng], 10, {duration:1.5});
+
             getMarker(markers, [lat, lng], {icon:icon}).addTo(mymap);
         }
 
@@ -824,18 +845,14 @@ function getMarker(stack, latlng, obj) {
     if (stack.length > 30) {
         m = stack.shift();
         var icon = m._icon.children[0];
-        console.log("current1", icon.style.webkitAnimationPlayState);
         icon.style.animation = null;
-        console.log("current2", icon.style.webkitAnimationPlayState);
         
 
         var nextM = stack[15];
         var nextIcon = nextM._icon.children[0];
 
 
-        console.log("next1", nextIcon.style.webkitAnimationPlayState);
         nextIcon.style.animation = "none"
-        console.log("next2", nextIcon.style.webkitAnimationPlayState);
 
         // restart css animation
         //icon.style.AnimationPlayState = 'running';
@@ -1005,8 +1022,8 @@ function playVoice(voice, time) {
  * 4: lng
  */
 
-function getFilename() {
-    var now = new Date();
+function getFilename(date) {
+    var now = date || new Date();
     var target = 5 * 600000000;
     var minute = roundUp(now, target).getMinutes();
     var x = "data/parsed/" + now.getHours() + "_" + minute + ".json?v=" + now;
@@ -1014,12 +1031,23 @@ function getFilename() {
     return x;
 }
 
-fetch(getFilename()).then((response) => {
-    return response.json()
-}).then((json) => {
-    enqueu(json.data);
-    //Tone.Transport.bpm.rampTo(300, 10);    
-});
+var isFetching = false;
+function prepareMoreData() {
+    if(!isFetching) {
+        fetchData();
+    }
+}
+
+function fetchData(date) {
+    isFetching = true;
+    fetch(getFilename(date)).then((response) => {
+        return response.json()
+    }).then((json) => {
+        enqueu(json.data);
+    }).then(() => {
+        isFetching = false;
+    });
+}
 
 function mockSthlmDelta() {
     //     function getNonZeroRandomNumber(){
@@ -1038,17 +1066,23 @@ function enqueu(items) {
 function deque(peekOnly) {
     //console.log(_backingQueue); 
     var item = _backingQueue[0];
-    //console.log("Left in queue", _backingQueue.length);
+    console.log("Left in queue", _backingQueue.length);
+    
+    // load more data
+    if(!item || _backingQueue.length < 300) {
+        prepareMoreData();
+    }
+
     // short circuit if no data yet
     if (!item) {
         return null;
     }
 
     // only return items when they have happened
-    if (isTimeInThePast(item[2])) {
+    if (isTimeInThePast(item)) {
         //item[3] = +sthlm[0] + mockSthlmDelta();
         //item[4] = +sthlm[1] + mockSthlmDelta();
-
+        //console.log("Now Dequeuing", item[2], item);
         if (peekOnly) {
             return item;
         } else {
@@ -1067,22 +1101,15 @@ function deque(peekOnly) {
  * 
  * @param {string} time 
  */
-function isTimeInThePast(time) {
-    var timeparts = time.split(":");
+function isTimeInThePast(item) {
+    var timeparts = item[2].split(":");
 
     var hour = timeparts[0];
     var minutes = timeparts[1];
-    //var seconds = timeparts[2];
     var now = new Date();
 
     var date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minutes, 0);
-
-    // override
-    // if (now.getSeconds() % 2 === 0) {
-    //     return true;
-    // } else {
-    //     return false;
-    // }
+    item.date = date;
 
     if (date < now) {
         return true;
