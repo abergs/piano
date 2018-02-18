@@ -4,6 +4,7 @@
 <head>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ=="
         crossorigin="" />
+    <link href="https://fonts.googleapis.com/css?family=Josefin+Sans" rel="stylesheet" />
     <style>
         html,
         body {
@@ -11,7 +12,7 @@
             padding: 0;
             width: 100vw;
             min-height: 100vh;
-            font-family: sans-serif;
+            font-family: 'Josefin Sans', sans-serif;
         }
 
         body {
@@ -130,14 +131,16 @@
             border-width: 1px;
         }
 
-
-        #mapid {
+        main {
             grid-row: 1;
             grid-column: 1;
+        }
+
+        #mapid {
             height: 100%;
         }
 
-         .nicecb {
+        .nicecb {
             width: 80px;
             height: 26px;
             background: #333;
@@ -203,6 +206,33 @@
         .nicecb input[type=checkbox]:checked+label {
             left: 43px;
         }
+
+        header {
+            margin-top:10px;
+            position: absolute;
+            margin-left: auto;
+            margin-right: auto;
+            left: 0;
+            right: 0;
+            grid-row: 1;
+            color:#fff;
+            z-index: 500;
+            text-align: center;
+            opacity: 0;
+            animation: fadeIn 5s 1;
+            animation-delay: 5s;
+            animation-fill-mode: forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
     </style>
 </head>
 
@@ -214,7 +244,13 @@
     </div> -->
 
 
-    <div id="mapid"></div>
+    <main>
+        <header>
+        <h1 id="title">The sound of public transport</h1>
+        <p id="slogan">Music generated live as every bus or metro arrives at a stop</p>
+    </header>
+        <div id="mapid"></div>
+    </main>
     <div class="controls">
         <div class="control">
             Add extra beats
@@ -232,29 +268,29 @@
         </div>
         <div class="control supersonic">
             Super sonic
-            <div class="nicecb">  
+            <div class="nicecb">
                 <input type="checkbox" value="None" id="enableSuperSonic" />
                 <label for="enableSuperSonic"></label>
             </div>
         </div>
         <div class="control">
             Only play what you see
-            <div class="nicecb">  
+            <div class="nicecb">
                 <input type="checkbox" value="None" id="onlyPlayVisible" checked />
                 <label for="onlyPlayVisible"></label>
             </div>
         </div>
         <div class="control">
             Show travel
-            <div class="nicecb">  
-                <input type="checkbox" value="None" id="showTravel"  />
+            <div class="nicecb">
+                <input type="checkbox" value="None" id="showTravel" />
                 <label for="showTravel"></label>
             </div>
         </div>
         <div class="control">
             Show keyboards
-            <div class="nicecb">  
-                <input type="checkbox" value="None" id="showKeyboards"  />
+            <div class="nicecb">
+                <input type="checkbox" value="None" id="showKeyboards" />
                 <label for="showKeyboards"></label>
             </div>
         </div>
