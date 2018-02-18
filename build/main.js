@@ -224,8 +224,8 @@ function tickFn(state, currentTime, currentTick) {
         //pendingPos.horizontal = location.horizontal;
         //pendingPos.vertical = location.vertical;
     } else {
-        console.warn("no arrival");
-    }
+            //console.warn("no arrival");
+        }
 
     var newHoriz = void 0,
         newVert = void 0;
@@ -468,7 +468,7 @@ function getMovement(target, currentPos, grid) {
 
     var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal;
     var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
-    console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
+    //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
     // Get delta with FACTOR and boundary check within grid
     var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
 
@@ -517,7 +517,7 @@ function getLocationFromItem(item) {
     //return ofCourseIStillLoveYou(300 +1, false);
 
     var grid = GRID;
-    console.log("Y", _state.mousePosition);
+    //console.log("Y", _state.mousePosition);
     var currentPos = _state.mousePosition || { horizontal: grid.horizontal / 2, vertical: grid.vertical / 2 };
     //console.log("currentPos", currentPos);
     //console.log("sleep", sleep);
@@ -701,7 +701,7 @@ function setActiveKeys(state) {
         var gridSize = GRID[keyboard.orientation];
 
         var keyWidth = gridSize / (newActiveKeys.length + scale.chromaticSizeAdjust);
-        console.log("keywidth", keyWidth);
+        //console.log("keywidth", keyWidth)
         var activeKeysWithSizes = newActiveKeys.map(function (key, idx) {
             return {
                 key: key,
@@ -829,7 +829,7 @@ function renderUI(state) {
     lastPlay = currentplay;
 
     voicesToPlay.currentTime += 0.1;
-    console.log(voicesToPlay.voices);
+    //console.log(voicesToPlay.voices);
     //console.warn(state.currentTime);
     Tone.Draw.schedule(function () {
 
@@ -969,7 +969,7 @@ function playVoice(voice, time) {
 
         var note = voice.currentKey.note.octave * 12 + voice.currentKey.note.pitchClass;
         var velocity = voice.velocity / 128;
-        console.log("velocity", velocity);
+        //console.log("velocity", velocity);
         if (heldNotes.has(note)) {
             piano.keyUp(note, time);
             heldNotes.delete(note);
@@ -1013,7 +1013,12 @@ function playVoice(voice, time) {
  */
 
 function getFilename() {
-    return "data/mock.json?v=" + new Date();
+    var now = new Date();
+    var target = 5 * 600000000;
+    var minute = roundUp(now, target).getMinutes();
+    var x = "data/parsed/" + now.getHours() + "_" + minute + ".json?v=" + now;
+    console.warn(x);
+    return x;
 }
 
 fetch(getFilename()).then(function (response) {
@@ -1040,30 +1045,25 @@ function enqueu(items) {
 function deque(peekOnly) {
     //console.log(_backingQueue); 
     var item = _backingQueue[0];
-
+    console.log("Left in queue", _backingQueue.length);
     // short circuit if no data yet
     if (!item) {
         return null;
     }
 
-    // override latlng for mockdata
-    //var latlng = [].concat(sthlm);
-
-
-    // // override 
-
-
     // only return items when they have happened
     if (isTimeInThePast(item[2])) {
-        item[3] = +sthlm[0] + mockSthlmDelta();
-        item[4] = +sthlm[1] + mockSthlmDelta();
+        //item[3] = +sthlm[0] + mockSthlmDelta();
+        //item[4] = +sthlm[1] + mockSthlmDelta();
 
         if (peekOnly) {
             return item;
         } else {
-            return item;
+            //return item;
             return _backingQueue.shift();
         }
+    } else {
+        console.info("next is", item);
     }
 
     // return null by default
@@ -1078,23 +1078,48 @@ function isTimeInThePast(time) {
     var timeparts = time.split(":");
 
     var hour = timeparts[0];
-    var min = timeparts[1];
-    var seconds = timeparts[2];
-
+    var minutes = timeparts[1];
+    //var seconds = timeparts[2];
     var now = new Date();
-    // override
-    if (now.getSeconds() % 2 === 0) {
-        return true;
-    } else {
-        return false;
-    }
 
-    if (hour <= now.getHours() && minutes <= now.getMinutes() && seconds <= now.getSeconds()) {
+    var date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minutes, 0);
+
+    // override
+    // if (now.getSeconds() % 2 === 0) {
+    //     return true;
+    // } else {
+    //     return false;
+    // }
+
+    if (date < now) {
         return true;
     }
 
     return false;
 }
+
+function roundUp(date, roundupto) {
+    // var time = 1000 * 60 * 5;
+    // var date = new Date()
+    // var minutes = (5 * Math.ceil(date.getMinutes() / 5));
+    // date.setMinutes(minutes);
+
+    var b = Date.now() + 15E4;
+    var c = b % 3E5;
+    var rounded = new Date(15E4 >= c ? b - c : b + 3E5 - c);
+    return rounded;
+    //var rounded = new Date(Math.round(date.getTime() / time) * time);
+    // var dt = new Date();
+    // var ticks = ((dt.getTime() * 10000) + 621355968000000000);
+
+    // return new Date(((ticks + roundupto - 1) / roundupto) * roundupto)
+}
+
+// private static DateTime RoundUp(DateTime dt, TimeSpan d)
+// {
+//     return new DateTime(((dt.Ticks + d.Ticks - 1) / d.Ticks) * d.Ticks);
+// }
+
 
 var sthlm = [59.331152, 18.06735];
 var sthlm2 = [59.310, 18.04];
