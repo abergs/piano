@@ -15,12 +15,14 @@ var DEBUG = false;
 
 const $ = (selector) => document.querySelector(selector)
 const $$ = (selector) => document.querySelectorAll(selector)
-const on = (elem, type, listener) => elem.addEventListener(type,listener)
+const on = (elem, type, listener) => elem.addEventListener(type, listener)
 
 var showTravel = $("#showTravel");
 var showKeyboards = $("#showKeyboards");
-on(showKeyboards,'change', () => {
-    if(showKeyboards.checked) {
+var playExtra = $("#playExtra");
+var pauseExtra = $("#pauseExtra");
+on(showKeyboards, 'change', () => {
+    if (showKeyboards.checked) {
         $("body").classList.add("showKeyboards");
     } else {
         $("body").classList.remove("showKeyboards");
@@ -125,8 +127,8 @@ function tickFn(state, currentTime, currentTick) {
         var rand = Math.random();
         var isOdd = currentTick % 2 === 0;
         var shouldNotPlay = isOdd == false;
-        var shouldNotPlayExtra = rand > document.getElementById("playExtra").value; // only play extra beats sometimes
-        var shouldPauseExtra = rand < document.getElementById("pauseExtra").value; // add extra pauses tometimes
+        var shouldNotPlayExtra = rand > playExtra.value; // only play extra beats sometimes
+        var shouldPauseExtra = rand < pauseExtra.value; // add extra pauses tometimes
 
         // make the music interesting
         if (shouldNotPlay && shouldNotPlayExtra) {
@@ -167,13 +169,14 @@ function tickFn(state, currentTime, currentTick) {
         vertical: newVert
     } : state.mousePosition;
     //console.warn("POS", mousePosition);
-    var patternStepCounter =
-        state.isPlaying &&
-            state.controls.patternOn &&
-            !mousePositionChanged &&
-            Math.max.apply(Math, [...state.currentVoices.map(function (v) {
-                return v.playOnTick;
-            })]) - currentTick < 0 ? state.patternStepCounter + 1 : state.patternStepCounter;
+    // we dont user patterns
+    // var patternStepCounter =
+    //     state.isPlaying &&
+    //         state.controls.patternOn &&
+    //         !mousePositionChanged &&
+    //         Math.max.apply(Math, [...state.currentVoices.map(function (v) {
+    //             return v.playOnTick;
+    //         })]) - currentTick < 0 ? state.patternStepCounter + 1 : state.patternStepCounter;
 
     return updateVoices(Object.assign({}, state, {
         currentTime: currentTime,
@@ -184,7 +187,7 @@ function tickFn(state, currentTime, currentTick) {
             deltaY: 0
         },
         pendingMousePosition: undefined,
-        patternStepCounter: patternStepCounter,
+        //patternStepCounter: patternStepCounter,
         currentArrival: newArrival,
         lastArrival: lastRealArrival
     }), 'treatment');
@@ -779,34 +782,33 @@ function renderUI(state) {
         //     zone.removeChild(old);
         // }
 
-        var latlng = [].concat(sthlm);
-        //latlng[0] = latlng[0] + Math.random() / 10;
-        //latlng[1] = latlng[1] + Math.random() / 10;
-        //console.log("sthlm", sthlm, latlng);
+        // var latlng = [].concat(sthlm);
+        // //latlng[0] = latlng[0] + Math.random() / 10;
+        // //latlng[1] = latlng[1] + Math.random() / 10;
+        // //console.log("sthlm", sthlm, latlng);
         if (state.currentArrival) {
             var lat = state.currentArrival[3];
             var lng = state.currentArrival[4];
-            var marker = L.marker([lat, lng], { icon: icon }).addTo(mymap);
-            markers.push(marker);
+
+            getMarker(markers, [lat, lng], {icon:icon}).addTo(mymap);
         }
 
         // render markers for travelpath (blue dots)
         if (showTravel.checked && state.mousePosition.horizontal) {
             var p = L.point(state.mousePosition.horizontal, state.mousePosition.vertical);
             var latlng = mymap.containerPointToLatLng(p);
-            var marker2 = L.marker(latlng, { icon: iconMousePos }).addTo(mymap);
-            markers.push(marker2);
+            getMarker(markersTravel, latlng, {icon:iconMousePos}).addTo(mymap);
         }
 
-        if (markers.length > 70) {
-            var m = markers.shift();
-            m.remove();
-            if (showTravel.checked) {
-                var m2 = markers.shift();
-                m2.remove();
-                //console.log("markers clean up", markers.length);
-            }
-        }
+        // if (markers.length > 70) {
+        //     var m = markers.shift();
+        //     oldMarkers.push(m);
+        //     if (showTravel.checked) {
+        //         var m2 = markers.shift();
+        //         m2.remove();
+        //         //console.log("markers clean up", markers.length);
+        //     }
+        // }
         // if(document.getElementById("showTarget").checked) {
         //     var targetDot = document.getElementById("targetdot");
         //     targetDot.style.left = target.horizontal + 'px';
@@ -816,6 +818,51 @@ function renderUI(state) {
     }, voicesToPlay.currentTime);
     playSounds(voicesToPlay);
 }
+
+function getMarker(stack, latlng, obj) {
+    var m;
+    if (stack.length > 30) {
+        m = stack.shift();
+        var icon = m._icon.children[0];
+        console.log("current1", icon.style.webkitAnimationPlayState);
+        icon.style.animation = null;
+        console.log("current2", icon.style.webkitAnimationPlayState);
+        
+
+        var nextM = stack[15];
+        var nextIcon = nextM._icon.children[0];
+
+
+        console.log("next1", nextIcon.style.webkitAnimationPlayState);
+        nextIcon.style.animation = "none"
+        console.log("next2", nextIcon.style.webkitAnimationPlayState);
+
+        // restart css animation
+        //icon.style.AnimationPlayState = 'running';
+        //icon.style.webkitAnimationPlayState = 'running';
+        
+        //icon.style.animation = 'none';
+        //icon.style.animation = null; 
+        //icon.offsetHeight; /* trigger reflow */
+        // setTimeout(function () {
+        //     icon.style.animation = null; 
+        // },10); 
+        
+
+        m.setLatLng(latlng);
+    } else {
+        m = L.marker(latlng, obj);
+    }
+
+    stack.push(m);
+    // if (markers.length > 70) {
+    //     stack.push(markers.shift());
+    // }
+
+    return m;
+}
+var markers = [];
+var markersTravel = [];
 
 var zone = document.getElementById("zone");
 function getStar() {
@@ -859,12 +906,14 @@ function playSounds(play) {
         var now = Tone.now();
         if (play.currentTime <= now) {
             console.error("time is in Past", play.currentTime, "vs", now);
+            //now.dispose();
             return;
 
         }
         play.voices.forEach(function (voice) {
             playVoice(voice, play.currentTime);
         }, this);
+        //now.dispose();
 
     }
 }
@@ -917,7 +966,9 @@ function playVoice(voice, time) {
 
         switch (voice.articulation) {
             case 'halfLegato':
-                var duration = new Tone.Time('16n').toSeconds();
+                var t = new Tone.Time('16n');
+                let duration = t.toSeconds();
+                t.dipose();
                 piano.keyDown(note, time, velocity);
                 piano.keyUp(note, time + duration);
                 break;
@@ -987,7 +1038,7 @@ function enqueu(items) {
 function deque(peekOnly) {
     //console.log(_backingQueue); 
     var item = _backingQueue[0];
-    console.log("Left in queue", _backingQueue.length);
+    //console.log("Left in queue", _backingQueue.length);
     // short circuit if no data yet
     if (!item) {
         return null;
@@ -1023,8 +1074,8 @@ function isTimeInThePast(time) {
     var minutes = timeparts[1];
     //var seconds = timeparts[2];
     var now = new Date();
-    
-    var date = new Date(now.getFullYear(),now.getMonth(), now.getDate(), hour,minutes,0);
+
+    var date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minutes, 0);
 
     // override
     // if (now.getSeconds() % 2 === 0) {
@@ -1048,12 +1099,12 @@ function roundUp(date, roundupto) {
 
     var b = Date.now() + 15E4;
     var c = b % 3E5;
-    var rounded = new Date(15E4>=c?b-c:b+3E5-c);
+    var rounded = new Date(15E4 >= c ? b - c : b + 3E5 - c);
     return rounded;
     //var rounded = new Date(Math.round(date.getTime() / time) * time);
     // var dt = new Date();
     // var ticks = ((dt.getTime() * 10000) + 621355968000000000);
-    
+
     // return new Date(((ticks + roundupto - 1) / roundupto) * roundupto)
 }
 

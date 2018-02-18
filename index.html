@@ -40,6 +40,10 @@
             border-top: none;
         }
 
+        .xx.leaflet-marker-icon.leaflet-interactive {
+            pointer-events: none;
+        }
+
         #mousedot,
         .mousedot,
         #targetdot,
@@ -53,6 +57,7 @@
             animation: fadeout 5s 1;
             animation-fill-mode: forwards;
             box-shadow: 0 0 10px rgba(255, 255, 255, 1);
+            opacity: 0;
         }
 
         .icon2 {
