@@ -29,6 +29,12 @@ on(showKeyboards, 'change', () => {
     }
 });
 
+on($("#onlyPlayVisible"),"change", (e) => {
+    console.log("e",e);
+    _state.controls.onlyPlayVisible = e.target.checked;
+    filterArrivals();
+});
+
 var changeBPMLabel = $("#changeBPMLabel");
 setBPMlabel(Tone.Transport.bpm.value);
 var changeBPM = $("#changeBPM");
@@ -42,7 +48,7 @@ function setBPMlabel(val) {
 
 on(changeBPM, 'change', (e) => {
     console.log("change", e);
-    Tone.Transport.bpm.value = e.target.value;
+    Tone.Transport.bpm.rampTo(e.target.value,4);
 });
 
 var SCALES = {
@@ -180,7 +186,7 @@ function tickFn(state, currentTime, currentTick) {
         newVert = Math.max(0, Math.min(GRID.vertical - 1, state.mousePosition.vertical));
     }
     var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
-    if(!mousePositionChanged) {
+    if (!mousePositionChanged) {
         //console.error("no change", mousePositionChanged);
     }
     var mousePosition = mousePositionChanged ? {
@@ -256,6 +262,7 @@ var _state = setVoicing(setHarmonicMode({
             '3': true,
             '4': true
         },
+        onlyPlayVisible: true,
         harmonicMode: 'diatonic',
         treatment: 'Chord',
         transposition: 0,
@@ -811,14 +818,14 @@ function renderUI(state) {
 
             //mymap.flyTo([lat, lng], 10, {duration:1.5});
 
-            getMarker(markers, [lat, lng], {icon:icon}).addTo(mymap);
+            getMarker(markers, [lat, lng], { icon: icon }).addTo(mymap);
         }
 
         // render markers for travelpath (blue dots)
         if (showTravel.checked && state.mousePosition.horizontal) {
             var p = L.point(state.mousePosition.horizontal, state.mousePosition.vertical);
             var latlng = mymap.containerPointToLatLng(p);
-            getMarker(markersTravel, latlng, {icon:iconMousePos}).addTo(mymap);
+            getMarker(markersTravel, latlng, { icon: iconMousePos }).addTo(mymap);
         }
 
         // if (markers.length > 70) {
@@ -846,7 +853,7 @@ function getMarker(stack, latlng, obj) {
         m = stack.shift();
         var icon = m._icon.children[0];
         icon.style.animation = null;
-        
+
 
         var nextM = stack[15];
         var nextIcon = nextM._icon.children[0];
@@ -857,14 +864,14 @@ function getMarker(stack, latlng, obj) {
         // restart css animation
         //icon.style.AnimationPlayState = 'running';
         //icon.style.webkitAnimationPlayState = 'running';
-        
+
         //icon.style.animation = 'none';
         //icon.style.animation = null; 
         //icon.offsetHeight; /* trigger reflow */
         // setTimeout(function () {
         //     icon.style.animation = null; 
         // },10); 
-        
+
 
         m.setLatLng(latlng);
     } else {
@@ -1033,7 +1040,7 @@ function getFilename(date) {
 
 var isFetching = false;
 function prepareMoreData() {
-    if(!isFetching) {
+    if (!isFetching) {
         fetchData();
     }
 }
@@ -1059,19 +1066,24 @@ function mockSthlmDelta() {
 }
 
 var _backingQueue = [];
+var _filteredArrivals = _backingQueue;
 function enqueu(items) {
     _backingQueue = _backingQueue.concat(items);
+    filterArrivals();
 }
 
 function deque(peekOnly) {
     //console.log(_backingQueue); 
     var item = _backingQueue[0];
-    console.log("Left in queue", _backingQueue.length);
-    
-    // load more data
-    if(!item || _backingQueue.length < 300) {
+    console.log("Left in filtered", _filteredArrivals.length, _backingQueue.length);
+
+    // load more data (controlled by backingqueue only)
+    // todo: fix so this is done by filter also? Maybe by checking time.
+    if (!item || _backingQueue.length < 300) {
         prepareMoreData();
     }
+
+    item = _filteredArrivals[0];
 
     // short circuit if no data yet
     if (!item) {
@@ -1079,22 +1091,80 @@ function deque(peekOnly) {
     }
 
     // only return items when they have happened
-    if (isTimeInThePast(item)) {
-        //item[3] = +sthlm[0] + mockSthlmDelta();
-        //item[4] = +sthlm[1] + mockSthlmDelta();
-        //console.log("Now Dequeuing", item[2], item);
-        if (peekOnly) {
-            return item;
-        } else {
-            //return item;
-            return _backingQueue.shift();
-        }
-    } else {
-        console.info("next is", item);
+    if (!isTimeInThePast(item)) {
+        // todo: show when next is?
+        // todo: Funny help text things like "finding every bus. For optimal sound etc."
+        return null;
     }
 
-    // return null by default
-    return null;
+    // if (onlyPlayVisible) {
+    //     for (var index = 0; index < _backingQueue.length; index++) {
+    //         var element = _backingQueue[index];
+    //         if (isArrivalOnScreen(element, mymap)) {
+    //             if (peekOnly) {
+    //                 return element
+    //             } else {
+    //                 //return item;
+    //                 return _backingQueue.splice(index, 1);
+    //             }
+    //         }
+    //     }
+
+    //     return null;
+    //     // if (isArrivalOnScreen(item, mymap)) {
+    //     //     return returnFromQueue(_backingQueue, peekOnly);
+    //     // } else {
+    //     //     // not optimal
+    //     //     _backingQueue.shift();
+    //     //     return null;
+    //     // }
+    // }
+    if(peekOnly){
+        return _filteredArrivals[0];
+    } else {
+        _filteredArrivals.shift();
+        var ind = _backingQueue.indexOf(item);
+        if(ind < 0) console.warn("Could not find item in backing");
+        _backingQueue.splice(ind,1);
+        return item;
+    }
+
+
+
+    //console.log("Now Dequeuing", item[2], item);
+    return returnFromQueue(_backingQueue, peekOnly);
+}
+
+function returnFromQueue(_backingQueue, peekOnly, element) {
+    if (peekOnly) {
+        return element || _backingQueue[0];
+    } else {
+        //return item;
+        return _backingQueue.shift();
+    }
+}
+
+function isArrivalOnScreen(item, mymap) {
+    var target = L.latLng(item[3], item[4]);
+    if (mymap.getBounds().contains(target)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+function filterArrivals() {
+    // reset
+    _filteredArrivals = _backingQueue;
+
+    // apply filters
+    if (_state.controls.onlyPlayVisible) {
+        console.log("Refilter");
+        _filteredArrivals = _backingQueue.filter((item) => {
+            return isArrivalOnScreen(item, mymap);
+        });
+    }
 }
 
 /**
@@ -1140,10 +1210,35 @@ function roundUp(date, roundupto) {
 //     return new DateTime(((dt.Ticks + d.Ticks - 1) / d.Ticks) * d.Ticks);
 // }
 
+const throttle = (func, limit) => {
+    let inThrottle
+    let lastFunc
+    let lastRan
+    return function () {
+        const context = this
+        const args = arguments
+        if (!inThrottle) {
+            func.apply(context, args)
+            lastRan = Date.now()
+            inThrottle = true
+        } else {
+            clearTimeout(lastFunc)
+            lastFunc = setTimeout(function () {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(context, args)
+                    lastRan = Date.now()
+                }
+            }, limit - (Date.now() - lastRan))
+        }
+    }
+}
 
 var sthlm = [59.331152, 18.06735];
 var sthlm2 = [59.310, 18.04];
 var mymap = L.map('mapid').setView(sthlm, 13);
+on(mymap, "move", throttle(filterArrivals,200));
+
+
 
 // var iconclass = iconclasses[row.iconclass]?row.iconclass:'';
 // var iconstyle = iconclass?iconclasses[iconclass]:'';
