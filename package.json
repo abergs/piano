@@ -1,12 +1,16 @@
 {
+  "scripts": {
+    "watch":"webpack --watch"
+  },
   "dependencies": {
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
+    "global": "^4.3.2",
     "lodash": "^4.17.5",
     "startaudiocontext": "^1.2.1",
     "tone": "0.12.5",
     "tone-piano": "^0.0.12",
-    "webpack": "^3.10.0"
+    "webpack": "^3.11.0"
   }
 }

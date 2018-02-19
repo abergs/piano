@@ -75,11 +75,55 @@ on($("#enableSuperSonic"),"change", (e) => {
     }
 });
 
+/** Ideas */
+
+function setPattern(pattern, prob) {
+    
+}
+
+var basePatterns = [
+    [1,1,1,1,1,1], // MEGA MUCH SOUND - dont do this shiat
+    [0,0,0,0,0,0], // pause
+    [1,0,0,0,0,0], // one beat    
+    [1,0,0,1,0,0], // one extra beat
+    [1,0,1,0,1,0], // trioler 
+    [1,0,0,0,1,0] // 6 shuffle
+];
+
+var patternsProb = [
+    //1
+    //,2,2,2,2,2
+    //,3,3,3,3
+    0
+];
+
+// // 2 bars patterns
+// var patterns = [
+//     [
+//         basePatterns[getrandom(>0)]
+//         basePatterns[getrandom(>0)],
+//         basePatterns[getrandom(>0)]
+//         basePatterns[getrandom(>0)]
+        
+//     ],
+//     special = [
+//         basePatterns[0], // hit, do we need stacato/legato??
+//         basePatterns[2] // pause
+//         basePatterns[1] // one beat
+//         basePatterns[1] // one beat
+//     ]
+// ]
+
+
+// // goal buid interesting 4 bars apttern
+
+
 
 
 var SCALES = {
     diatonic: {
-        intervals: [2, 2, 1, 2, 2, 2, 1],
+        //intervals: [2, 2, 1, 2, 2, 2, 1],
+        intervals: [1, 3, 1, 2, 2, 1, 2],
         voiceSteps: {
             '3': 4,
             '4': 9
@@ -154,13 +198,15 @@ function updateVoices(state, scheduling) {
         })
     });
 }
+var patternToPlay = basePatterns[1];
 function tickFn(state, currentTime, currentTick) {
+    console.info(currentTick, currentTime);
     var scale = SCALES[state.controls.harmonicMode];
     var _state$accumulatedDel2 = state.accumulatedDelta
         , deltaX = _state$accumulatedDel2.deltaX
         , deltaY = _state$accumulatedDel2.deltaY;
 
-    var pendingPos = state.pendingMousePosition;
+    var pendingPos = state.mousePosition;
 
 
 
@@ -173,18 +219,35 @@ function tickFn(state, currentTime, currentTick) {
 
         // only play every-other, and sometimes add extra beats when playing from queue
         var rand = Math.random();
-        var isOdd = currentTick % 2 === 0;
-        var shouldNotPlay = isOdd == false;
-        var shouldNotPlayExtra = rand > playExtra.value; // only play extra beats sometimes
-        var shouldPauseExtra = rand < pauseExtra.value; // add extra pauses tometimes
 
-        // make the music interesting
-        if (shouldNotPlay && shouldNotPlayExtra) {
-            return state;
-        } else if (shouldPauseExtra) {
-            //console.warn("Extra pause");
+        var patternTick = currentTick % 6;
+        var beatTick = patternTick === 0;
+
+        
+        if(beatTick){
+            var patternIndex = patternsProb[getRandomInt(0, patternsProb.length)];
+            patternToPlay = basePatterns[patternIndex];
+        }
+
+        var shouldPlay = patternToPlay[patternTick] === 1;
+        console.log("pattern to play", patternToPlay);
+        console.log("should play?", shouldPlay, "patternTick:", patternTick, "beatTicks", beatTick);
+        if(!shouldPlay) {
             return state;
         }
+
+        // var isOdd = currentTick % 2 === 0;
+        // var shouldNotPlay = isOdd == false;
+        // var shouldNotPlayExtra = rand > playExtra.value; // only play extra beats sometimes
+        // var shouldPauseExtra = rand < pauseExtra.value; // add extra pauses tometimes
+
+        // // make the music interesting
+        // if (shouldNotPlay && shouldNotPlayExtra) {
+        //     return state;
+        // } else if (shouldPauseExtra) {
+        //     //console.warn("Extra pause");
+        //     return state;
+        // }
         // redo dequeue to actually not only peek
         if (newArrival) {
             deque();
@@ -193,6 +256,7 @@ function tickFn(state, currentTime, currentTick) {
         //console.log("Arrival happened", arrival);
         var location = getLocationFromItem(arrival);
         pendingPos = location;
+        console.log("loc",location);
         //pendingPos.horizontal = location.horizontal;
         //pendingPos.vertical = location.vertical;
     } else {
@@ -207,18 +271,18 @@ function tickFn(state, currentTime, currentTick) {
         newHoriz = Math.max(0, Math.min(GRID.horizontal - 1, pendingPos.horizontal));
         newVert = Math.max(0, Math.min(GRID.vertical - 1, pendingPos.vertical));
     } else {
-        //console.error("NO PENDINGPOS");
+        console.error("NO PENDINGPOS");
         newHoriz = Math.max(0, Math.min(GRID.horizontal - 1, state.mousePosition.horizontal));
         newVert = Math.max(0, Math.min(GRID.vertical - 1, state.mousePosition.vertical));
     }
-    var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
-    if (!mousePositionChanged) {
-        //console.error("no change", mousePositionChanged);
-    }
-    var mousePosition = mousePositionChanged ? {
-        horizontal: newHoriz,
-        vertical: newVert
-    } : state.mousePosition;
+    // var mousePositionChanged = newHoriz !== state.mousePosition.horizontal || newVert !== state.mousePosition.vertical;
+    // if (!mousePositionChanged) {
+    //     console.error("no change", mousePositionChanged);
+    // }
+    // var mousePosition = mousePositionChanged ? {
+    //     horizontal: newHoriz,
+    //     vertical: newVert
+    // } : state.mousePosition;
     //console.warn("POS", mousePosition);
     // we dont user patterns
     // var patternStepCounter =
@@ -232,7 +296,7 @@ function tickFn(state, currentTime, currentTick) {
     return updateVoices(Object.assign({}, state, {
         currentTime: currentTime,
         currentTick: currentTick,
-        mousePosition: mousePosition,
+        mousePosition: pendingPos,
         accumulatedDelta: {
             deltaX: 0,
             deltaY: 0
@@ -345,13 +409,13 @@ function anders() {
     //state = setActiveKeys(Object.assign({}, state));
     var tick = 0;
     repeatToken = Tone.Transport.scheduleRepeat(function (time) {
-        tick++;
         //console.log("repeattoken", time, tick);
         //updateState(tick, time, _this2.tick);
         //theindex+=1;
         //console.log(state.currentTick);
         //console.log("state", _state);
         updateState(tickFn, time, tick);
+        tick++;
 
     }, "16n");
 
@@ -453,11 +517,11 @@ function getMovement(target, currentPos, grid) {
     // go right left or stay still
     var horizontalMovement = getOneDirection(target.horizontal, currentPos.horizontal);
 
-    var FACTOR = 20;
+    var FACTOR = 25;
 
-    var dynamicFactorHorizontal = 1 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal
-    var dynamicFactorVertical = 1 + diff(target.vertical, currentPos.vertical) / grid.vertical;
-    //console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
+    var dynamicFactorHorizontal = 2 + diff(target.horizontal, currentPos.horizontal) / grid.horizontal
+    var dynamicFactorVertical = 2 + diff(target.vertical, currentPos.vertical) / grid.vertical;
+    console.warn(dynamicFactorHorizontal, dynamicFactorVertical);
     // Get delta with FACTOR and boundary check within grid
     var deltaHorizontal = horizontalMovement * FACTOR * dynamicFactorHorizontal;
 
@@ -507,7 +571,7 @@ function getLocationFromItem(item) {
     //return ofCourseIStillLoveYou(300 +1, false);
 
     var grid = GRID;
-    //console.log("Y", _state.mousePosition);
+    console.log("Y", _state.mousePosition);
     var currentPos = _state.mousePosition || { horizontal: grid.horizontal / 2, vertical: grid.vertical / 2 };
     //console.log("currentPos", currentPos);
     //console.log("sleep", sleep);
@@ -805,19 +869,7 @@ function renderUI(state) {
     var voicesToPlay = getVoicesToPlay(state);
     var currentTime = getCurrentTime(state);
 
-    // protect from looping the same play
-    var currentplay = "";
-    voicesToPlay.voices.forEach(function (voice) {
-        if (voice.currentKey) {
-            currentplay += voice.currentKey.index;
-        }
-    }, this);
-
-    // if same as last, don't play it
-    if (currentplay === lastPlay) {
-        return;
-    }
-    lastPlay = currentplay;
+   
 
     voicesToPlay.currentTime += 0.1;
     //console.log(voicesToPlay.voices);
@@ -851,7 +903,10 @@ function renderUI(state) {
         if (showTravel.checked && state.mousePosition.horizontal) {
             var p = L.point(state.mousePosition.horizontal, state.mousePosition.vertical);
             var latlng = mymap.containerPointToLatLng(p);
+            console.log("SHOULD render", state.mousePosition)
             getMarker(markersTravel, latlng, { icon: iconMousePos }).addTo(mymap);
+        } else {
+            console.log("no render??", state.mousePosition);
         }
 
         // if (markers.length > 70) {
@@ -870,6 +925,20 @@ function renderUI(state) {
         // }
 
     }, voicesToPlay.currentTime);
+
+     // protect from looping the same play
+     var currentplay = "";
+     voicesToPlay.voices.forEach(function (voice) {
+         if (voice.currentKey) {
+             currentplay += voice.currentKey.index;
+         }
+     }, this);
+ 
+     // if same as last, don't play it
+     if (currentplay === lastPlay) {
+         return;
+     }
+     lastPlay = currentplay;
     playSounds(voicesToPlay);
 }
 
@@ -1101,7 +1170,7 @@ function enqueu(items) {
 function deque(peekOnly) {
     //console.log(_backingQueue); 
     var item = _backingQueue[0];
-    console.log("Left in filtered", _filteredArrivals.length, _backingQueue.length);
+    //console.log("Left in filtered", _filteredArrivals.length, _backingQueue.length);
 
     // load more data (controlled by backingqueue only)
     // todo: fix so this is done by filter also? Maybe by checking time.
@@ -1198,6 +1267,7 @@ function filterArrivals() {
  * @param {string} time 
  */
 function isTimeInThePast(item) {
+    return true;
     var timeparts = item[2].split(":");
 
     var hour = timeparts[0];
