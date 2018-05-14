@@ -1,5 +1,5 @@
 var Tone = require("tone");
-var TonePiano = require('tone-piano');
+var TonePiano;
 var lodash = require("lodash");
 var StartAudioContext = require("startaudiocontext");
 Tone.context.latencyHint = "balanced";
@@ -7,6 +7,7 @@ var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context, "#mstart").then(function () {
     console.log("Started");
+    TonePiano = require("tone-piano");
     loadPiano(compressor).then(() => {
         console.log("piano loaded");
         anders();

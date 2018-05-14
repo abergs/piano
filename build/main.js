@@ -23572,7 +23572,7 @@ class PianoBase extends __WEBPACK_IMPORTED_MODULE_0_tone__["AudioNode"] {
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 var Tone = __webpack_require__(5);
-var TonePiano = __webpack_require__(6);
+var TonePiano;
 var lodash = __webpack_require__(11);
 var StartAudioContext = __webpack_require__(14);
 Tone.context.latencyHint = "balanced";
@@ -23580,6 +23580,7 @@ var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context, "#mstart").then(function () {
     console.log("Started");
+    TonePiano = __webpack_require__(6);
     loadPiano(compressor).then(function () {
         console.log("piano loaded");
         anders();
