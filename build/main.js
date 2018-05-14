@@ -23580,6 +23580,10 @@ var heldNotes = new Set();
 var piano;
 StartAudioContext(Tone.context, "#mstart").then(function () {
     console.log("Started");
+    loadPiano(compressor).then(function () {
+        console.log("piano loaded");
+        anders();
+    });
 });
 
 var BPMDefaults = {
@@ -24150,11 +24154,6 @@ function getRandomInt(min, max) {
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
 }
-
-loadPiano(compressor).then(function () {
-    console.log("piano loaded");
-    anders();
-});
 
 function loadPiano(dest) {
     piano = new TonePiano.Piano([30, 108], 3, false).connect(dest);
