@@ -18,7 +18,6 @@ var BPMDefaults = {
 
 Tone.Transport.bpm.value = BPMDefaults.default;
 
-
 var DEBUG = false;
 
 const $ = (selector) => document.querySelector(selector)
