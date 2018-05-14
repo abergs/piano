@@ -5,7 +5,7 @@ var StartAudioContext = require("startaudiocontext");
 Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
-StartAudioContext(Tone.context).then(function () {
+StartAudioContext(Tone.context, "#mstart").then(function () {
     console.log("Started");
 });
 

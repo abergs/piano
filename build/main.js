@@ -23578,7 +23578,7 @@ var StartAudioContext = __webpack_require__(14);
 Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
-StartAudioContext(Tone.context).then(function () {
+StartAudioContext(Tone.context, "#mstart").then(function () {
     console.log("Started");
 });
 
