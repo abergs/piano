@@ -23,8 +23,19 @@ webAudioTouchUnlock.default(context)
     .then(function (unlocked) {
         if(unlocked) {
             // AudioContext was unlocked from an explicit user action, sound should start playing now
+            TonePiano = require("tone-piano");
+            loadPiano(compressor).then(() => {
+            console.log("piano loaded");
+            anders();
+            });
             console.error("audiocontext was unlocked");
+            
         } else {
+            TonePiano = require("tone-piano");
+            loadPiano(compressor).then(() => {
+            console.log("piano loaded");
+            anders();
+            });
             // There was no need for unlocking, devices other than iOS
             console.error("No need to unlock");
         }
