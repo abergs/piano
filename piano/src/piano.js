@@ -12,7 +12,7 @@ var webAudioTouchUnlock = require('web-audio-touch-unlock');
 var Tone = require("tone");
 
 var context = Tone.context;
-var context2 =  new (window.AudioContext || window.webkitAudioContext)();
+// var context2 =  new (window.AudioContext || window.webkitAudioContext)();
 console.log(webAudioTouchUnlock);
 webAudioTouchUnlock.default(context)
     .then(function (unlocked) {
@@ -377,6 +377,7 @@ k2.activeKeys.forEach(function (key, index) {
     xmap.appendChild(d);
     xmap.style.position = "relative";
 }, this);
+
 
 
 //window.state = state;

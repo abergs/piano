@@ -5,7 +5,7 @@
     "babel-preset-env": "^1.6.1",
     "lodash": "^4.17.5",
     "startaudiocontext": "^1.2.1",
-    "tone": "0.12.5",
+    "tone": "^0.12.80",
     "tone-piano": "^0.0.12",
     "web-audio-touch-unlock": "^1.0.1",
     "webpack": "^3.10.0"
