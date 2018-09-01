@@ -7,6 +7,7 @@
     "startaudiocontext": "^1.2.1",
     "tone": "0.12.5",
     "tone-piano": "^0.0.12",
+    "web-audio-touch-unlock": "^1.0.1",
     "webpack": "^3.10.0"
   }
 }

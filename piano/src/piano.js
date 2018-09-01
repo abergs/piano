@@ -1,18 +1,36 @@
 var Tone = require("tone");
+var webAudioTouchUnlock = require('web-audio-touch-unlock');
 var TonePiano;
 var lodash = require("lodash");
-var StartAudioContext = require("startaudiocontext");
+// var StartAudioContext = require("startaudiocontext");
 Tone.context.latencyHint = "balanced";
 var heldNotes = new Set();
 var piano;
-StartAudioContext(Tone.context, "#mstart").then(function () {
-    console.log("Started");
-    TonePiano = require("tone-piano");
-    loadPiano(compressor).then(() => {
-        console.log("piano loaded");
-        anders();
+// StartAudioContext(Tone.context, "#mstart").then(function () {
+//     console.log("Started");
+//     TonePiano = require("tone-piano");
+//     loadPiano(compressor).then(() => {
+//         console.log("piano loaded");
+//         anders();
+//     });
+// });
+
+
+
+var context = new (window.AudioContext || window.webkitAudioContext)();
+console.log(webAudioTouchUnlock);
+webAudioTouchUnlock.default(context)
+    .then(function (unlocked) {
+        if(unlocked) {
+            // AudioContext was unlocked from an explicit user action, sound should start playing now
+            console.error("audiocontext was unlocked");
+        } else {
+            // There was no need for unlocking, devices other than iOS
+            console.error("No need to unlock");
+        }
+    }, function(reason) {
+        console.error(reason);
     });
-});
 
 
 var BPMDefaults = {
