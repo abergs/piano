@@ -1,11 +1,4 @@
-var Tone = require("tone");
-var webAudioTouchUnlock = require('web-audio-touch-unlock');
-var TonePiano;
-var lodash = require("lodash");
-// var StartAudioContext = require("startaudiocontext");
-Tone.context.latencyHint = "balanced";
-var heldNotes = new Set();
-var piano;
+
 // StartAudioContext(Tone.context, "#mstart").then(function () {
 //     console.log("Started");
 //     TonePiano = require("tone-piano");
@@ -15,35 +8,53 @@ var piano;
 //     });
 // });
 
+var webAudioTouchUnlock = require('web-audio-touch-unlock');
+var Tone = require("tone");
 
-
-var context = new (window.AudioContext || window.webkitAudioContext)();
+var context = Tone.context;
+var context2 =  new (window.AudioContext || window.webkitAudioContext)();
 console.log(webAudioTouchUnlock);
 webAudioTouchUnlock.default(context)
     .then(function (unlocked) {
         if(unlocked) {
+            
             // AudioContext was unlocked from an explicit user action, sound should start playing now
-            TonePiano = require("tone-piano");
-            loadPiano(compressor).then(() => {
-            console.log("piano loaded");
-            anders();
-            });
+            
             console.error("audiocontext was unlocked");
+            startEverything();
             
         } else {
-            TonePiano = require("tone-piano");
-            loadPiano(compressor).then(() => {
-            console.log("piano loaded");
-            anders();
-            });
+            
+            
             // There was no need for unlocking, devices other than iOS
             console.error("No need to unlock");
+            startEverything();
         }
     }, function(reason) {
         console.error(reason);
     });
 
 
+
+function startEverything() {
+    
+    var TonePiano;
+    var lodash = require("lodash");
+    // var StartAudioContext = require("startaudiocontext");
+    Tone.context.latencyHint = "balanced";
+    var heldNotes = new Set();
+    var piano;
+
+    TonePiano = require("tone-piano");
+    
+    setTimeout(() => {
+        loadPiano(compressor).then(() => {
+            console.log("piano loaded");
+            anders();
+            });
+    },0);
+
+    
 var BPMDefaults = {
     max: 120,
     default: 90,
@@ -1320,3 +1331,4 @@ var CartoDB_DarkMatter = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fa
     maxZoom: 19
 });
 CartoDB_DarkMatter.addTo(mymap);
+}
