@@ -24492,7 +24492,17 @@ webAudioTouchUnlock.default(context).then(function (unlocked) {
     console.error(reason);
 });
 
+document.addEventListener("DOMContentLoaded", function (event) {
+    var playbtn = document.getElementById("playbtn");
+    playbtn.addEventListener("click", function () {
+        startEverything();
+        playbtn.style.display = "none";
+    });
+});
 function startEverything() {
+    if (Tone.context.state !== 'running') {
+        Tone.context.resume();
+    }
 
     var TonePiano;
     var lodash = __webpack_require__(3);
@@ -25774,10 +25784,10 @@ function startEverything() {
 Object.defineProperty(exports, "__esModule", { value: true });
 function webAudioTouchUnlock(context) {
     return new Promise(function (resolve, reject) {
-        // if (!context || !(context instanceof (window.AudioContext || window.webkitAudioContext))) {
-        //     reject('WebAudioTouchUnlock: You need to pass an instance of AudioContext to this method call');
-        //     return;
-        // }
+        if (!context || !(context instanceof (window.AudioContext || window.webkitAudioContext))) {
+            reject('WebAudioTouchUnlock: You need to pass an instance of AudioContext to this method call');
+            return;
+        }
         if (context.state === 'suspended' && 'ontouchstart' in window) {
             var unlock_1 = function () {
                 context.resume().then(function () {
@@ -25806,7 +25816,7 @@ exports.default = webAudioTouchUnlock;
 /* WEBPACK VAR INJECTION */(function(global, module) {var __WEBPACK_AMD_DEFINE_RESULT__;/**
  * @license
  * Lodash <https://lodash.com/>
- * Copyright JS Foundation and other contributors <https://js.foundation/>
+ * Copyright OpenJS Foundation and other contributors <https://openjsf.org/>
  * Released under MIT license <https://lodash.com/license>
  * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
  * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -25817,14 +25827,15 @@ exports.default = webAudioTouchUnlock;
   var undefined;
 
   /** Used as the semantic version number. */
-  var VERSION = '4.17.5';
+  var VERSION = '4.17.21';
 
   /** Used as the size to enable large array optimizations. */
   var LARGE_ARRAY_SIZE = 200;
 
   /** Error message constants. */
   var CORE_ERROR_TEXT = 'Unsupported core-js use. Try https://npms.io/search?q=ponyfill.',
-      FUNC_ERROR_TEXT = 'Expected a function';
+      FUNC_ERROR_TEXT = 'Expected a function',
+      INVALID_TEMPL_VAR_ERROR_TEXT = 'Invalid `variable` option passed into `_.template`';
 
   /** Used to stand-in for `undefined` hash values. */
   var HASH_UNDEFINED = '__lodash_hash_undefined__';
@@ -25957,10 +25968,11 @@ exports.default = webAudioTouchUnlock;
   var reRegExpChar = /[\\^$.*+?()[\]{}|]/g,
       reHasRegExpChar = RegExp(reRegExpChar.source);
 
-  /** Used to match leading and trailing whitespace. */
-  var reTrim = /^\s+|\s+$/g,
-      reTrimStart = /^\s+/,
-      reTrimEnd = /\s+$/;
+  /** Used to match leading whitespace. */
+  var reTrimStart = /^\s+/;
+
+  /** Used to match a single whitespace character. */
+  var reWhitespace = /\s/;
 
   /** Used to match wrap detail comments. */
   var reWrapComment = /\{(?:\n\/\* \[wrapped with .+\] \*\/)?\n?/,
@@ -25969,6 +25981,18 @@ exports.default = webAudioTouchUnlock;
 
   /** Used to match words composed of alphanumeric characters. */
   var reAsciiWord = /[^\x00-\x2f\x3a-\x40\x5b-\x60\x7b-\x7f]+/g;
+
+  /**
+   * Used to validate the `validate` option in `_.template` variable.
+   *
+   * Forbids characters which could potentially change the meaning of the function argument definition:
+   * - "()," (modification of function parameters)
+   * - "=" (default value)
+   * - "[]{}" (destructuring of function parameters)
+   * - "/" (beginning of a comment)
+   * - whitespace
+   */
+  var reForbiddenIdentifierChars = /[()=,{}\[\]\/\s]/;
 
   /** Used to match backslashes in property paths. */
   var reEscapeChar = /\\(\\)?/g;
@@ -26081,7 +26105,7 @@ exports.default = webAudioTouchUnlock;
   var reHasUnicode = RegExp('[' + rsZWJ + rsAstralRange  + rsComboRange + rsVarRange + ']');
 
   /** Used to detect strings that need a more robust regexp to match words. */
-  var reHasUnicodeWord = /[a-z][A-Z]|[A-Z]{2,}[a-z]|[0-9][a-zA-Z]|[a-zA-Z][0-9]|[^a-zA-Z0-9 ]/;
+  var reHasUnicodeWord = /[a-z][A-Z]|[A-Z]{2}[a-z]|[0-9][a-zA-Z]|[a-zA-Z][0-9]|[^a-zA-Z0-9 ]/;
 
   /** Used to assign default `context` object properties. */
   var contextProps = [
@@ -26241,6 +26265,14 @@ exports.default = webAudioTouchUnlock;
   /** Used to access faster Node.js helpers. */
   var nodeUtil = (function() {
     try {
+      // Use `util.types` for Node.js 10+.
+      var types = freeModule && freeModule.require && freeModule.require('util').types;
+
+      if (types) {
+        return types;
+      }
+
+      // Legacy `process.binding('util')` for Node.js < 10.
       return freeProcess && freeProcess.binding && freeProcess.binding('util');
     } catch (e) {}
   }());
@@ -26791,6 +26823,19 @@ exports.default = webAudioTouchUnlock;
   }
 
   /**
+   * The base implementation of `_.trim`.
+   *
+   * @private
+   * @param {string} string The string to trim.
+   * @returns {string} Returns the trimmed string.
+   */
+  function baseTrim(string) {
+    return string
+      ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, '')
+      : string;
+  }
+
+  /**
    * The base implementation of `_.unary` without support for storing metadata.
    *
    * @private
@@ -27022,20 +27067,6 @@ exports.default = webAudioTouchUnlock;
   }
 
   /**
-   * Gets the value at `key`, unless `key` is "__proto__".
-   *
-   * @private
-   * @param {Object} object The object to query.
-   * @param {string} key The key of the property to get.
-   * @returns {*} Returns the property value.
-   */
-  function safeGet(object, key) {
-    return key == '__proto__'
-      ? undefined
-      : object[key];
-  }
-
-  /**
    * Converts `set` to an array of its values.
    *
    * @private
@@ -27135,6 +27166,21 @@ exports.default = webAudioTouchUnlock;
     return hasUnicode(string)
       ? unicodeToArray(string)
       : asciiToArray(string);
+  }
+
+  /**
+   * Used by `_.trim` and `_.trimEnd` to get the index of the last non-whitespace
+   * character of `string`.
+   *
+   * @private
+   * @param {string} string The string to inspect.
+   * @returns {number} Returns the index of the last non-whitespace character.
+   */
+  function trimmedEndIndex(string) {
+    var index = string.length;
+
+    while (index-- && reWhitespace.test(string.charAt(index))) {}
+    return index;
   }
 
   /**
@@ -28482,16 +28528,10 @@ exports.default = webAudioTouchUnlock;
         value.forEach(function(subValue) {
           result.add(baseClone(subValue, bitmask, customizer, subValue, value, stack));
         });
-
-        return result;
-      }
-
-      if (isMap(value)) {
+      } else if (isMap(value)) {
         value.forEach(function(subValue, key) {
           result.set(key, baseClone(subValue, bitmask, customizer, key, value, stack));
         });
-
-        return result;
       }
 
       var keysFunc = isFull
@@ -29415,8 +29455,8 @@ exports.default = webAudioTouchUnlock;
         return;
       }
       baseFor(source, function(srcValue, key) {
+        stack || (stack = new Stack);
         if (isObject(srcValue)) {
-          stack || (stack = new Stack);
           baseMergeDeep(object, source, key, srcIndex, baseMerge, customizer, stack);
         }
         else {
@@ -29492,7 +29532,7 @@ exports.default = webAudioTouchUnlock;
           if (isArguments(objValue)) {
             newValue = toPlainObject(objValue);
           }
-          else if (!isObject(objValue) || (srcIndex && isFunction(objValue))) {
+          else if (!isObject(objValue) || isFunction(objValue)) {
             newValue = initCloneObject(srcValue);
           }
         }
@@ -29536,8 +29576,21 @@ exports.default = webAudioTouchUnlock;
      * @returns {Array} Returns the new sorted array.
      */
     function baseOrderBy(collection, iteratees, orders) {
+      if (iteratees.length) {
+        iteratees = arrayMap(iteratees, function(iteratee) {
+          if (isArray(iteratee)) {
+            return function(value) {
+              return baseGet(value, iteratee.length === 1 ? iteratee[0] : iteratee);
+            }
+          }
+          return iteratee;
+        });
+      } else {
+        iteratees = [identity];
+      }
+
       var index = -1;
-      iteratees = arrayMap(iteratees.length ? iteratees : [identity], baseUnary(getIteratee()));
+      iteratees = arrayMap(iteratees, baseUnary(getIteratee()));
 
       var result = baseMap(collection, function(value, key, collection) {
         var criteria = arrayMap(iteratees, function(iteratee) {
@@ -29794,6 +29847,10 @@ exports.default = webAudioTouchUnlock;
         var key = toKey(path[index]),
             newValue = value;
 
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+          return object;
+        }
+
         if (index != lastIndex) {
           var objValue = nested[key];
           newValue = customizer ? customizer(objValue, key, nested) : undefined;
@@ -29946,11 +30003,14 @@ exports.default = webAudioTouchUnlock;
      *  into `array`.
      */
     function baseSortedIndexBy(array, value, iteratee, retHighest) {
-      value = iteratee(value);
-
       var low = 0,
-          high = array == null ? 0 : array.length,
-          valIsNaN = value !== value,
+          high = array == null ? 0 : array.length;
+      if (high === 0) {
+        return 0;
+      }
+
+      value = iteratee(value);
+      var valIsNaN = value !== value,
           valIsNull = value === null,
           valIsSymbol = isSymbol(value),
           valIsUndefined = value === undefined;
@@ -31233,7 +31293,7 @@ exports.default = webAudioTouchUnlock;
       return function(number, precision) {
         number = toNumber(number);
         precision = precision == null ? 0 : nativeMin(toInteger(precision), 292);
-        if (precision) {
+        if (precision && nativeIsFinite(number)) {
           // Shift with exponential notation to avoid floating-point issues.
           // See [MDN](https://mdn.io/round#Examples) for more details.
           var pair = (toString(number) + 'e').split('e'),
@@ -31435,10 +31495,11 @@ exports.default = webAudioTouchUnlock;
       if (arrLength != othLength && !(isPartial && othLength > arrLength)) {
         return false;
       }
-      // Assume cyclic values are equal.
-      var stacked = stack.get(array);
-      if (stacked && stack.get(other)) {
-        return stacked == other;
+      // Check that cyclic values are equal.
+      var arrStacked = stack.get(array);
+      var othStacked = stack.get(other);
+      if (arrStacked && othStacked) {
+        return arrStacked == other && othStacked == array;
       }
       var index = -1,
           result = true,
@@ -31600,10 +31661,11 @@ exports.default = webAudioTouchUnlock;
           return false;
         }
       }
-      // Assume cyclic values are equal.
-      var stacked = stack.get(object);
-      if (stacked && stack.get(other)) {
-        return stacked == other;
+      // Check that cyclic values are equal.
+      var objStacked = stack.get(object);
+      var othStacked = stack.get(other);
+      if (objStacked && othStacked) {
+        return objStacked == other && othStacked == object;
       }
       var result = true;
       stack.set(object, other);
@@ -32413,6 +32475,26 @@ exports.default = webAudioTouchUnlock;
         array[length] = isIndex(index, arrLength) ? oldArray[index] : undefined;
       }
       return array;
+    }
+
+    /**
+     * Gets the value at `key`, unless `key` is "__proto__" or "constructor".
+     *
+     * @private
+     * @param {Object} object The object to query.
+     * @param {string} key The key of the property to get.
+     * @returns {*} Returns the property value.
+     */
+    function safeGet(object, key) {
+      if (key === 'constructor' && typeof object[key] === 'function') {
+        return;
+      }
+
+      if (key == '__proto__') {
+        return;
+      }
+
+      return object[key];
     }
 
     /**
@@ -34964,6 +35046,10 @@ exports.default = webAudioTouchUnlock;
      * // The `_.property` iteratee shorthand.
      * _.filter(users, 'active');
      * // => objects for ['barney']
+     *
+     * // Combining several predicates using `_.overEvery` or `_.overSome`.
+     * _.filter(users, _.overSome([{ 'age': 36 }, ['age', 40]]));
+     * // => objects for ['fred', 'barney']
      */
     function filter(collection, predicate) {
       var func = isArray(collection) ? arrayFilter : baseFilter;
@@ -35713,15 +35799,15 @@ exports.default = webAudioTouchUnlock;
      * var users = [
      *   { 'user': 'fred',   'age': 48 },
      *   { 'user': 'barney', 'age': 36 },
-     *   { 'user': 'fred',   'age': 40 },
+     *   { 'user': 'fred',   'age': 30 },
      *   { 'user': 'barney', 'age': 34 }
      * ];
      *
      * _.sortBy(users, [function(o) { return o.user; }]);
-     * // => objects for [['barney', 36], ['barney', 34], ['fred', 48], ['fred', 40]]
+     * // => objects for [['barney', 36], ['barney', 34], ['fred', 48], ['fred', 30]]
      *
      * _.sortBy(users, ['user', 'age']);
-     * // => objects for [['barney', 34], ['barney', 36], ['fred', 40], ['fred', 48]]
+     * // => objects for [['barney', 34], ['barney', 36], ['fred', 30], ['fred', 48]]
      */
     var sortBy = baseRest(function(collection, iteratees) {
       if (collection == null) {
@@ -36208,6 +36294,7 @@ exports.default = webAudioTouchUnlock;
           }
           if (maxing) {
             // Handle invocations in a tight loop.
+            clearTimeout(timerId);
             timerId = setTimeout(timerExpired, wait);
             return invokeFunc(lastCallTime);
           }
@@ -38264,7 +38351,7 @@ exports.default = webAudioTouchUnlock;
       if (typeof value != 'string') {
         return value === 0 ? value : +value;
       }
-      value = value.replace(reTrim, '');
+      value = baseTrim(value);
       var isBinary = reIsBinary.test(value);
       return (isBinary || reIsOctal.test(value))
         ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
@@ -40594,9 +40681,12 @@ exports.default = webAudioTouchUnlock;
       , 'g');
 
       // Use a sourceURL for easier debugging.
+      // The sourceURL gets injected into the source that's eval-ed, so be careful
+      // to normalize all kinds of whitespace, so e.g. newlines (and unicode versions of it) can't sneak in
+      // and escape the comment, thus injecting code that gets evaled.
       var sourceURL = '//# sourceURL=' +
-        ('sourceURL' in options
-          ? options.sourceURL
+        (hasOwnProperty.call(options, 'sourceURL')
+          ? (options.sourceURL + '').replace(/\s/g, ' ')
           : ('lodash.templateSources[' + (++templateCounter) + ']')
         ) + '\n';
 
@@ -40629,10 +40719,16 @@ exports.default = webAudioTouchUnlock;
 
       // If `variable` is not specified wrap a with-statement around the generated
       // code to add the data object to the top of the scope chain.
-      var variable = options.variable;
+      var variable = hasOwnProperty.call(options, 'variable') && options.variable;
       if (!variable) {
         source = 'with (obj) {\n' + source + '\n}\n';
       }
+      // Throw an error if a forbidden character was found in `variable`, to prevent
+      // potential command injection attacks.
+      else if (reForbiddenIdentifierChars.test(variable)) {
+        throw new Error(INVALID_TEMPL_VAR_ERROR_TEXT);
+      }
+
       // Cleanup code by stripping empty strings.
       source = (isEvaluating ? source.replace(reEmptyStringLeading, '') : source)
         .replace(reEmptyStringMiddle, '$1')
@@ -40746,7 +40842,7 @@ exports.default = webAudioTouchUnlock;
     function trim(string, chars, guard) {
       string = toString(string);
       if (string && (guard || chars === undefined)) {
-        return string.replace(reTrim, '');
+        return baseTrim(string);
       }
       if (!string || !(chars = baseToString(chars))) {
         return string;
@@ -40781,7 +40877,7 @@ exports.default = webAudioTouchUnlock;
     function trimEnd(string, chars, guard) {
       string = toString(string);
       if (string && (guard || chars === undefined)) {
-        return string.replace(reTrimEnd, '');
+        return string.slice(0, trimmedEndIndex(string) + 1);
       }
       if (!string || !(chars = baseToString(chars))) {
         return string;
@@ -41335,6 +41431,9 @@ exports.default = webAudioTouchUnlock;
      * values against any array or object value, respectively. See `_.isEqual`
      * for a list of supported value comparisons.
      *
+     * **Note:** Multiple values can be checked by combining several matchers
+     * using `_.overSome`
+     *
      * @static
      * @memberOf _
      * @since 3.0.0
@@ -41350,6 +41449,10 @@ exports.default = webAudioTouchUnlock;
      *
      * _.filter(objects, _.matches({ 'a': 4, 'c': 6 }));
      * // => [{ 'a': 4, 'b': 5, 'c': 6 }]
+     *
+     * // Checking for several possible values
+     * _.filter(objects, _.overSome([_.matches({ 'a': 1 }), _.matches({ 'a': 4 })]));
+     * // => [{ 'a': 1, 'b': 2, 'c': 3 }, { 'a': 4, 'b': 5, 'c': 6 }]
      */
     function matches(source) {
       return baseMatches(baseClone(source, CLONE_DEEP_FLAG));
@@ -41363,6 +41466,9 @@ exports.default = webAudioTouchUnlock;
      * **Note:** Partial comparisons will match empty array and empty object
      * `srcValue` values against any array or object value, respectively. See
      * `_.isEqual` for a list of supported value comparisons.
+     *
+     * **Note:** Multiple values can be checked by combining several matchers
+     * using `_.overSome`
      *
      * @static
      * @memberOf _
@@ -41380,6 +41486,10 @@ exports.default = webAudioTouchUnlock;
      *
      * _.find(objects, _.matchesProperty('a', 4));
      * // => { 'a': 4, 'b': 5, 'c': 6 }
+     *
+     * // Checking for several possible values
+     * _.filter(objects, _.overSome([_.matchesProperty('a', 1), _.matchesProperty('a', 4)]));
+     * // => [{ 'a': 1, 'b': 2, 'c': 3 }, { 'a': 4, 'b': 5, 'c': 6 }]
      */
     function matchesProperty(path, srcValue) {
       return baseMatchesProperty(path, baseClone(srcValue, CLONE_DEEP_FLAG));
@@ -41603,6 +41713,10 @@ exports.default = webAudioTouchUnlock;
      * Creates a function that checks if **all** of the `predicates` return
      * truthy when invoked with the arguments it receives.
      *
+     * Following shorthands are possible for providing predicates.
+     * Pass an `Object` and it will be used as an parameter for `_.matches` to create the predicate.
+     * Pass an `Array` of parameters for `_.matchesProperty` and the predicate will be created using them.
+     *
      * @static
      * @memberOf _
      * @since 4.0.0
@@ -41629,6 +41743,10 @@ exports.default = webAudioTouchUnlock;
      * Creates a function that checks if **any** of the `predicates` return
      * truthy when invoked with the arguments it receives.
      *
+     * Following shorthands are possible for providing predicates.
+     * Pass an `Object` and it will be used as an parameter for `_.matches` to create the predicate.
+     * Pass an `Array` of parameters for `_.matchesProperty` and the predicate will be created using them.
+     *
      * @static
      * @memberOf _
      * @since 4.0.0
@@ -41648,6 +41766,9 @@ exports.default = webAudioTouchUnlock;
      *
      * func(NaN);
      * // => false
+     *
+     * var matchesFunc = _.overSome([{ 'a': 1 }, { 'a': 2 }])
+     * var matchesPropertyFunc = _.overSome([['a', 1], ['a', 2]])
      */
     var overSome = createOver(arraySome);
 
@@ -42834,10 +42955,11 @@ exports.default = webAudioTouchUnlock;
     baseForOwn(LazyWrapper.prototype, function(func, methodName) {
       var lodashFunc = lodash[methodName];
       if (lodashFunc) {
-        var key = (lodashFunc.name + ''),
-            names = realNames[key] || (realNames[key] = []);
-
-        names.push({ 'name': methodName, 'func': lodashFunc });
+        var key = lodashFunc.name + '';
+        if (!hasOwnProperty.call(realNames, key)) {
+          realNames[key] = [];
+        }
+        realNames[key].push({ 'name': methodName, 'func': lodashFunc });
       }
     });
 
@@ -42963,726 +43085,7 @@ module.exports = function(module) {
 /* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
-(function webpackUniversalModuleDefinition(root, factory) {
-	if(true)
-		module.exports = factory(__webpack_require__(0));
-	else if(typeof define === 'function' && define.amd)
-		define(["tone"], factory);
-	else if(typeof exports === 'object')
-		exports["Piano"] = factory(require("tone"));
-	else
-		root["Piano"] = factory(root["tone"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_0__) {
-return /******/ (function(modules) { // webpackBootstrap
-/******/ 	// The module cache
-/******/ 	var installedModules = {};
-/******/
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
-/******/
-/******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId]) {
-/******/ 			return installedModules[moduleId].exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = installedModules[moduleId] = {
-/******/ 			i: moduleId,
-/******/ 			l: false,
-/******/ 			exports: {}
-/******/ 		};
-/******/
-/******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/
-/******/ 		// Flag the module as loaded
-/******/ 		module.l = true;
-/******/
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-/******/
-/******/
-/******/ 	// expose the modules object (__webpack_modules__)
-/******/ 	__webpack_require__.m = modules;
-/******/
-/******/ 	// expose the module cache
-/******/ 	__webpack_require__.c = installedModules;
-/******/
-/******/ 	// identity function for calling harmony imports with the correct context
-/******/ 	__webpack_require__.i = function(value) { return value; };
-/******/
-/******/ 	// define getter function for harmony exports
-/******/ 	__webpack_require__.d = function(exports, name, getter) {
-/******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
-/******/ 		}
-/******/ 	};
-/******/
-/******/ 	// getDefaultExport function for compatibility with non-harmony modules
-/******/ 	__webpack_require__.n = function(module) {
-/******/ 		var getter = module && module.__esModule ?
-/******/ 			function getDefault() { return module['default']; } :
-/******/ 			function getModuleExports() { return module; };
-/******/ 		__webpack_require__.d(getter, 'a', getter);
-/******/ 		return getter;
-/******/ 	};
-/******/
-/******/ 	// Object.prototype.hasOwnProperty.call
-/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
-/******/
-/******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
-/******/
-/******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 8);
-/******/ })
-/************************************************************************/
-/******/ ([
-/* 0 */
-/***/ (function(module, exports) {
-
-module.exports = __WEBPACK_EXTERNAL_MODULE_0__;
-
-/***/ }),
-/* 1 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Util__ = __webpack_require__(2);
-
-
-/* harmony default export */ __webpack_exports__["a"] = ({
-
-	getReleasesUrl(midi){
-		return `rel${midi - 20}.[mp3|ogg]`
-	},
-
-	getHarmonicsUrl(midi){
-		return `harmL${__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__Util__["c" /* midiToNote */])(midi).replace('#', 's')}.[mp3|ogg]`
-	},
-
-	getNotesUrl(midi, vel){
-		return `${__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__Util__["c" /* midiToNote */])(midi).replace('#', 's')}v${vel}.[mp3|ogg]`
-	}
-});
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "c", function() { return midiToNote; });
-/* unused harmony export noteToMidi */
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "a", function() { return createSource; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "d", function() { return midiToFrequencyRatio; });
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "b", function() { return randomBetween; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_tone__);
-
-
-function noteToMidi(note){
-	return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_tone__["Frequency"])(note).toMidi()
-}
-
-function midiToNote(midi){
-	return __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_tone__["Frequency"])(midi, 'midi').toNote()
-}
-
-function midiToFrequencyRatio(midi){
-	let mod = midi % 3
-	if (mod === 1){
-		return [midi - 1, __WEBPACK_IMPORTED_MODULE_0_tone___default.a.intervalToFrequencyRatio(1)]
-	} else if (mod === 2){
-		return [midi + 1, __WEBPACK_IMPORTED_MODULE_0_tone___default.a.intervalToFrequencyRatio(-1)]
-	} else {
-		return [midi, 1]
-	}
-}
-
-function createSource(buffer){
-	return new __WEBPACK_IMPORTED_MODULE_0_tone__["BufferSource"](buffer)
-}
-
-function randomBetween(low, high){
-	return Math.random() * (high - low) + low
-}
-
-
-
-
-/***/ }),
-/* 3 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_tone__);
-
-
-class PianoBase extends __WEBPACK_IMPORTED_MODULE_0_tone__["AudioNode"] {
-	constructor(vol = 0) {
-		super()
-		this.createInsOuts(0, 1)
-
-		this.volume = vol
-	}
-	get volume() {
-		return __WEBPACK_IMPORTED_MODULE_0_tone___default.a.gainToDb(this.output.gain.value)
-	}
-	set volume(vol) {
-		this.output.gain.value = __WEBPACK_IMPORTED_MODULE_0_tone___default.a.dbToGain(vol)
-	}
-}
-/* harmony export (immutable) */ __webpack_exports__["a"] = PianoBase;
-
-
-
-/***/ }),
-/* 4 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Salamander__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__PianoBase__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__Util__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_tone__);
-
-
-
-
-
-// the harmonics notes that Salamander has
-const harmonics = [21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87]
-
-class Harmonics extends __WEBPACK_IMPORTED_MODULE_1__PianoBase__["a" /* default */] {
-
-	constructor(range=[21, 108]){
-		super()
-
-		const lowerIndex = harmonics.findIndex((note) => note >= range[0])
-		let upperIndex = harmonics.findIndex((note) => note >= range[1])
-		upperIndex = upperIndex === -1 ? upperIndex = harmonics.length : upperIndex
-
-		const notes = harmonics.slice(lowerIndex, upperIndex)
-
-		this._samples = {}
-
-		for (let n of notes){
-			this._samples[n] = __WEBPACK_IMPORTED_MODULE_0__Salamander__["a" /* default */].getHarmonicsUrl(n)
-		}
-	}
-
-	start(note, time, velocity){
-		//make sure it's a valid range
-		if (note >= harmonics[0] && note <= harmonics[harmonics.length-1]){
-			this._sampler.triggerAttack(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["c" /* midiToNote */])(note), time, velocity * __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["b" /* randomBetween */])(0.5, 1))
-		}
-	}
-
-	load(baseUrl){
-		return new Promise((success, fail) => {
-			this._sampler = new __WEBPACK_IMPORTED_MODULE_3_tone__["Sampler"](this._samples, success, baseUrl).connect(this.output)
-			this._sampler.release = 1
-		})
-	}
-}
-/* harmony export (immutable) */ __webpack_exports__["a"] = Harmonics;
-
-
-
-/***/ }),
-/* 5 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_tone__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__Salamander__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__PianoBase__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__Util__ = __webpack_require__(2);
-
-
-
-
-
-/**
- * Maps velocity depths to Salamander velocities
- */
-const velocitiesMap = {
-	1  : [8],
-	2  : [6, 12],
-	3  : [1, 8, 15],
-	4  : [1, 5, 10, 15],
-	5  : [1, 4, 8, 12, 16],
-	6  : [1, 3, 7, 10, 13, 16],
-	7  : [1, 3, 6, 9, 11, 13, 16],
-	8  : [1, 3, 5, 7, 9, 11, 13, 15],
-	9  : [1, 3, 5, 7, 9, 11, 13, 15, 16],
-	10 : [1, 2, 3, 5, 7, 9, 11, 13, 15, 16],
-	11 : [1, 2, 3, 5, 7, 9, 11, 13, 14, 15, 16],
-	12 : [1, 2, 3, 4, 5, 7, 9, 11, 13, 14, 15, 16],
-	13 : [1, 2, 3, 4, 5, 7, 9, 11, 12, 13, 14, 15, 16],
-	14 : [1, 2, 3, 4, 5, 6, 7, 9, 11, 12, 13, 14, 15, 16],
-	15 : [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16],
-	16 : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-}
-
-const notes = [21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105, 108]
-
-/**
- *  Manages all of the hammered string sounds
- */
-class Notes extends __WEBPACK_IMPORTED_MODULE_2__PianoBase__["a" /* default */] {
-
-	constructor(range=[21, 108], velocities=1){
-		super()
-
-		const lowerIndex = notes.findIndex((note) => note >= range[0])
-		let upperIndex = notes.findIndex((note) => note >= range[1])
-		upperIndex = upperIndex === -1 ? upperIndex = notes.length : upperIndex + 1
-
-		const slicedNotes = notes.slice(lowerIndex, upperIndex)
-
-		this._samplers = velocitiesMap[velocities].slice()
-
-		this._activeNotes = new Map()
-
-		this._samplers.forEach((vel, i) => {
-			this._samplers[i] = {}
-			slicedNotes.forEach((note) => {
-				this._samplers[i][note] = __WEBPACK_IMPORTED_MODULE_1__Salamander__["a" /* default */].getNotesUrl(note, vel)
-			})
-		})
-	}
-
-	_hasNote(note, velocity){
-		return this._samplers.hasOwnProperty(velocity) && this._samplers[velocity].has(note)
-	}
-
-	_getNote(note, velocity){
-		return this._samplers[velocity].get(note)
-	}
-
-	stop(note, time, velocity){
-		//stop all of the currently playing note
-		if (this._activeNotes.has(note)){
-			this._activeNotes.get(note).forEach(source => {
-				const release = 1
-				source.stop(time + release, release)
-			})
-			this._activeNotes.delete(note)
-		}
-	}
-
-	start(note, time, velocity){
-
-		const velPos = velocity * (this._samplers.length - 1)
-		const roundedVel = Math.round(velPos)
-		const diff = roundedVel - velPos
-		let gain = 1 - diff * 0.5
-
-		if (this._samplers.length === 1){
-			gain = Math.max(velocity, 0.05)
-		}
-
-		let [midi, ratio] = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__Util__["d" /* midiToFrequencyRatio */])(note)
-
-		if (this._hasNote(midi, roundedVel)){
-			const source = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__Util__["a" /* createSource */])(this._getNote(midi, roundedVel))
-			source.playbackRate.value = ratio
-			source.connect(this.output)
-			source.curve = 'exponential'
-			source.start(time, 0, undefined, gain, 0)
-
-			if (!this._activeNotes.has(note)){
-				this._activeNotes.set(note, [])
-			}
-			this._activeNotes.get(note).push(source)
-		}
-	}
-
-	load(baseUrl){
-		const promises = []
-		this._samplers.forEach((obj, i) => {
-			let prom = new Promise((success) => {
-				this._samplers[i] = new __WEBPACK_IMPORTED_MODULE_0_tone__["Buffers"](obj, success, baseUrl)
-			})
-			promises.push(prom)
-		})
-		return Promise.all(promises)
-	}
-}
-/* harmony export (immutable) */ __webpack_exports__["a"] = Notes;
-
-
-
-/***/ }),
-/* 6 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__PianoBase__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__Salamander__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__Util__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_tone__);
-
-
-
-
-
-class Pedal extends __WEBPACK_IMPORTED_MODULE_0__PianoBase__["a" /* default */] {
-	constructor(){
-		super()
-
-		this._downTime = Infinity
-
-		this._currentSound = null
-
-		this._buffers = null
-	}
-
-	load(baseUrl){
-		return new Promise((success) => {
-			this._buffers = new __WEBPACK_IMPORTED_MODULE_3_tone__["Buffers"]({
-				up : 'pedalU1.mp3',
-				down : 'pedalD1.mp3'
-			}, success, baseUrl)
-		})
-	}
-
-	/**
-	 *  Squash the current playing sound
-	 */
-	_squash(time){
-		if (this._currentSound){
-			this._currentSound.stop(time+0.1, 0.1)
-		}
-		this._currentSound = null
-	}
-
-	_playSample(time, dir){
-		this._currentSound = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["a" /* createSource */])(this._buffers.get(dir))
-		this._currentSound.curve = 'exponential'
-		this._currentSound.connect(this.output).start(time, __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["b" /* randomBetween */])(0, 0.01), undefined, 0.5 * __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["b" /* randomBetween */])(0.5, 1), 0.05)
-	}
-
-	down(time){
-		this._squash(time)
-		this._downTime = time
-		this._playSample(time, 'down')
-	}
-
-	up(time){
-		this._squash(time)
-		this._downTime = Infinity
-		this._playSample(time, 'up')
-	}
-
-	isDown(time){
-		return time > this._downTime
-	}
-}
-/* harmony export (immutable) */ __webpack_exports__["a"] = Pedal;
-
-
-
-/***/ }),
-/* 7 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Salamander__ = __webpack_require__(1);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__PianoBase__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__Util__ = __webpack_require__(2);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_tone__);
-
-
-
-
-
-class Release extends __WEBPACK_IMPORTED_MODULE_1__PianoBase__["a" /* default */] {
-
-	constructor(range){
-		super()
-
-		this._buffers = {}
-		for (let i = range[0]; i <= range[1]; i++){
-			this._buffers[i] = __WEBPACK_IMPORTED_MODULE_0__Salamander__["a" /* default */].getReleasesUrl(i)
-		}
-	}
-
-	load(baseUrl){
-		return new Promise((success) => {
-			this._buffers = new __WEBPACK_IMPORTED_MODULE_3_tone__["Buffers"](this._buffers, success, baseUrl)
-		})
-	}
-
-	start(note, time, velocity){
-		if (this._buffers.has(note)){
-			let source = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["a" /* createSource */])(this._buffers.get(note)).connect(this.output)
-			//randomize the velocity slightly
-			velocity *= __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__Util__["b" /* randomBetween */])(0.5, 1)
-			source.start(time, 0, undefined, 0.015 * velocity, 0)
-		}
-	}
-}
-/* harmony export (immutable) */ __webpack_exports__["a"] = Release;
-
-
-
-/***/ }),
-/* 8 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_tone___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_tone__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__Pedal__ = __webpack_require__(6);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__Notes__ = __webpack_require__(5);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__Harmonics__ = __webpack_require__(4);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__Release__ = __webpack_require__(7);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5__Salamander__ = __webpack_require__(1);
-
-
-
-
-
-
-
-/**
- *  @class Multisampled Grand Piano using [Salamander Piano Samples](https://archive.org/details/SalamanderGrandPianoV3)
- *  @extends {Tone}
- */
-class Piano extends __WEBPACK_IMPORTED_MODULE_0_tone__["AudioNode"] {
-
-	constructor(){
-
-		const options = __WEBPACK_IMPORTED_MODULE_0_tone___default.a.defaults(arguments, ["range", "velocities"], {
-			velocities : 1,
-			range : [21, 108],
-			release : true
-		});
-
-		super()
-		this.createInsOuts(0, 1)
-
-		this._loaded = false
-
-		this._heldNotes = new Map()
-
-		this._sustainedNotes = new Map()
-
-		this._notes = new __WEBPACK_IMPORTED_MODULE_2__Notes__["a" /* Notes */](options.range, options.velocities).connect(this.output)
-
-		this._pedal = new __WEBPACK_IMPORTED_MODULE_1__Pedal__["a" /* default */]().connect(this.output)
-
-		if (options.release){
-			this._harmonics = new __WEBPACK_IMPORTED_MODULE_3__Harmonics__["a" /* default */](options.range).connect(this.output)
-
-			this._release = new __WEBPACK_IMPORTED_MODULE_4__Release__["a" /* default */](options.range).connect(this.output)
-		}
-	}
-
-	/**
-	 *  Load all the samples
-	 *  @param  {String}  baseUrl  The url for the Salamander base folder
-	 *  @return  {Promise}
-	 */
-	load(url='https://tambien.github.io/Piano/Salamander/'){
-		const promises = [this._notes.load(url), this._pedal.load(url)]
-		if (this._harmonics){
-			promises.push(this._harmonics.load(url))
-		}
-		if (this._release){
-			promises.push(this._release.load(url))
-		}
-		return Promise.all(promises).then(() => {
-			this._loaded = true
-		})
-	}
-
-	/**
-	 * If all the samples are loaded or not
-	 * @readOnly
-	 * @type {Boolean}
-	 */
-	get loaded(){
-		return this._loaded
-	}
-
-	/**
-	 *  Put the pedal down at the given time. Causes subsequent
-	 *  notes and currently held notes to sustain.
-	 *  @param  {Time}  time  The time the pedal should go down
-	 *  @returns {Piano} this
-	 */
-	pedalDown(time){
-		if (this.loaded){
-			time = this.toSeconds(time)
-			if (!this._pedal.isDown(time)){
-				this._pedal.down(time)
-			}
-		}
-		return this
-	}
-
-	/**
-	 *  Put the pedal up. Dampens sustained notes
-	 *  @param  {Time}  time  The time the pedal should go up
-	 *  @returns {Piano} this
-	 */
-	pedalUp(time){
-		if (this.loaded){
-			time = this.toSeconds(time)
-			if (this._pedal.isDown(time)){
-				this._pedal.up(time)
-				// dampen each of the notes
-				this._sustainedNotes.forEach((t, note) => {
-					if (!this._heldNotes.has(note)){
-						this._notes.stop(note, time)
-					}
-				})
-				this._sustainedNotes.clear()
-			}
-		}
-		return this
-	}
-
-	/**
-	 *  Play a note.
-	 *  @param  {String|Number}  note      The note to play. If it is a number, it is assumed
-	 *                                     to be MIDI
-	 *  @param  {NormalRange}  velocity  The velocity to play the note
-	 *  @param  {Time}  time      The time of the event
-	 *  @return  {Piano}  this
-	 */
-	keyDown(note, time=__WEBPACK_IMPORTED_MODULE_0_tone___default.a.now(), velocity=0.8){
-		if (this.loaded){
-			time = this.toSeconds(time)
-
-			if (__WEBPACK_IMPORTED_MODULE_0_tone___default.a.isString(note)){
-				note = Math.round(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_tone__["Frequency"])(note).toMidi())
-			}
-
-			if (!this._heldNotes.has(note)){
-				//record the start time and velocity
-				this._heldNotes.set(note, {time, velocity})
-
-				this._notes.start(note, time, velocity)
-			}
-		}
-		return this
-	}
-
-	/**
-	 *  Release a held note.
-	 *  @param  {String|Number}  note      The note to stop
-	 *  @param  {Time}  time      The time of the event
-	 *  @return  {Piano}  this
-	 */
-	keyUp(note, time=__WEBPACK_IMPORTED_MODULE_0_tone___default.a.now(), velocity=0.8){
-		if (this.loaded){
-			time = this.toSeconds(time)
-
-			if (__WEBPACK_IMPORTED_MODULE_0_tone___default.a.isString(note)){
-				note = Math.round(__webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0_tone__["Frequency"])(note).toMidi())
-			}
-
-			if (this._heldNotes.has(note)){
-
-				const prevNote = this._heldNotes.get(note)
-				this._heldNotes.delete(note)
-
-				if (this._release){
-					this._release.start(note, time, velocity)
-				}
-
-				//compute the release velocity
-				const holdTime = time - prevNote.time
-				const prevVel = prevNote.velocity
-				let dampenGain = (0.5/Math.max(holdTime, 0.1)) + prevVel + velocity
-				dampenGain = Math.pow(Math.log(Math.max(dampenGain, 1)), 2) / 2
-
-				if (this._pedal.isDown(time)){
-					if (!this._sustainedNotes.has(note)){
-						this._sustainedNotes.set(note, time)
-					}
-				} else {
-					this._notes.stop(note, time, velocity)
-
-					if (this._harmonics){
-						this._harmonics.start(note, time, dampenGain)
-					}
-				}
-			}
-		}
-		return this
-	}
-
-	/**
-	 *  Set the volumes of each of the components
-	 *  @param {String} param
-	 *  @param {Decibels} vol
-	 *  @return {Piano} this
-	 *  @example
-	 * //either as an string
-	 * piano.setVolume('release', -10)
-	 */
-	setVolume(param, vol){
-		switch(param){
-			case 'note':
-				this._notes.volume = vol
-				break
-			case 'pedal':
-				this._pedal.volume = vol
-				break
-			case 'release':
-				if (this._release){
-					this._release.volume = vol
-				}
-				break
-			case 'harmonics':
-				if (this._harmonics){
-					this._harmonics.volume = vol
-				}
-				break
-		}
-		return this
-	}
-
-	stopAll(){
-		this.pedalUp()
-		this._heldNotes.forEach((value, note) => {
-			this.keyUp(note)
-		})
-		return this
-	}
-
-	/**
-	 * Callback to invoke with normalized progress
-	 * @param  {Function} cb
-	 */
-	progress(cb){
-		__WEBPACK_IMPORTED_MODULE_0_tone__["Buffer"].on('progress', cb)
-		return this
-	}
-}
-/* harmony export (immutable) */ __webpack_exports__["Piano"] = Piano;
-
-
-
-/***/ })
-/******/ ]);
-});
+!function(e,t){ true?module.exports=t(__webpack_require__(0)):"function"==typeof define&&define.amd?define(["tone"],t):"object"==typeof exports?exports.Piano=t(require("tone")):e.Piano=t(e.tone)}(this,function(e){return function(e){function t(r){if(n[r])return n[r].exports;var o=n[r]={i:r,l:!1,exports:{}};return e[r].call(o.exports,o,o.exports,t),o.l=!0,o.exports}var n={};return t.m=e,t.c=n,t.i=function(e){return e},t.d=function(e,n,r){t.o(e,n)||Object.defineProperty(e,n,{configurable:!1,enumerable:!0,get:r})},t.n=function(e){var n=e&&e.__esModule?function(){return e.default}:function(){return e};return t.d(n,"a",n),n},t.o=function(e,t){return Object.prototype.hasOwnProperty.call(e,t)},t.p="",t(t.s=8)}([function(t,n){t.exports=e},function(e,t,n){"use strict";Object.defineProperty(t,"__esModule",{value:!0});var r=n(2);t.default={getReleasesUrl:function(e){return"rel"+(e-20)+".[mp3|ogg]"},getHarmonicsUrl:function(e){return"harmL"+(0,r.midiToNote)(e).replace("#","s")+".[mp3|ogg]"},getNotesUrl:function(e,t){return(0,r.midiToNote)(e).replace("#","s")+"v"+t+".[mp3|ogg]"}}},function(e,t,n){"use strict";function r(e){return(0,s.Frequency)(e).toMidi()}function o(e){return(0,s.Frequency)(e,"midi").toNote()}function i(e){var t=e%3;return 1===t?[e-1,c.default.intervalToFrequencyRatio(1)]:2===t?[e+1,c.default.intervalToFrequencyRatio(-1)]:[e,1]}function u(e){return new s.BufferSource(e)}function a(e,t){return Math.random()*(t-e)+e}Object.defineProperty(t,"__esModule",{value:!0}),t.randomBetween=t.midiToFrequencyRatio=t.createSource=t.noteToMidi=t.midiToNote=void 0;var s=n(0),c=function(e){return e&&e.__esModule?e:{default:e}}(s);t.midiToNote=o,t.noteToMidi=r,t.createSource=u,t.midiToFrequencyRatio=i,t.randomBetween=a},function(e,t,n){"use strict";function r(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function o(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function i(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}Object.defineProperty(t,"__esModule",{value:!0});var u=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),a=n(0),s=function(e){return e&&e.__esModule?e:{default:e}}(a),c=function(e){function t(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:0;r(this,t);var n=o(this,(t.__proto__||Object.getPrototypeOf(t)).call(this));return n.createInsOuts(0,1),n.volume=e,n}return i(t,e),u(t,[{key:"volume",get:function(){return s.default.gainToDb(this.output.gain.value)},set:function(e){this.output.gain.value=s.default.dbToGain(e)}}]),t}(a.AudioNode);t.default=c},function(e,t,n){"use strict";function r(e){return e&&e.__esModule?e:{default:e}}function o(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function i(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function u(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}Object.defineProperty(t,"__esModule",{value:!0});var a=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),s=n(1),c=r(s),l=n(3),f=r(l),p=n(2),h=n(0),d=[21,24,27,30,33,36,39,42,45,48,51,54,57,60,63,66,69,72,75,78,81,84,87],_=function(e){function t(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:[21,108];o(this,t);var n=i(this,(t.__proto__||Object.getPrototypeOf(t)).call(this)),r=d.findIndex(function(t){return t>=e[0]}),u=d.findIndex(function(t){return t>=e[1]});u=-1===u?u=d.length:u;var a=d.slice(r,u);n._samples={};var s=!0,l=!1,f=void 0;try{for(var p,h=a[Symbol.iterator]();!(s=(p=h.next()).done);s=!0){var _=p.value;n._samples[_]=c.default.getHarmonicsUrl(_)}}catch(e){l=!0,f=e}finally{try{!s&&h.return&&h.return()}finally{if(l)throw f}}return n}return u(t,e),a(t,[{key:"start",value:function(e,t,n){e>=d[0]&&e<=d[d.length-1]&&this._sampler.triggerAttack((0,p.midiToNote)(e),t,n*(0,p.randomBetween)(.5,1))}},{key:"load",value:function(e){var t=this;return new Promise(function(n,r){t._sampler=new h.Sampler(t._samples,n,e).connect(t.output),t._sampler.release=1})}}]),t}(f.default);t.default=_},function(e,t,n){"use strict";function r(e){return e&&e.__esModule?e:{default:e}}function o(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function i(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function u(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}Object.defineProperty(t,"__esModule",{value:!0}),t.Notes=void 0;var a=function(){function e(e,t){var n=[],r=!0,o=!1,i=void 0;try{for(var u,a=e[Symbol.iterator]();!(r=(u=a.next()).done)&&(n.push(u.value),!t||n.length!==t);r=!0);}catch(e){o=!0,i=e}finally{try{!r&&a.return&&a.return()}finally{if(o)throw i}}return n}return function(t,n){if(Array.isArray(t))return t;if(Symbol.iterator in Object(t))return e(t,n);throw new TypeError("Invalid attempt to destructure non-iterable instance")}}(),s=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),c=n(0),l=(r(c),n(1)),f=r(l),p=n(3),h=r(p),d=n(2),_={1:[8],2:[6,12],3:[1,8,15],4:[1,5,10,15],5:[1,4,8,12,16],6:[1,3,7,10,13,16],7:[1,3,6,9,11,13,16],8:[1,3,5,7,9,11,13,15],9:[1,3,5,7,9,11,13,15,16],10:[1,2,3,5,7,9,11,13,15,16],11:[1,2,3,5,7,9,11,13,14,15,16],12:[1,2,3,4,5,7,9,11,13,14,15,16],13:[1,2,3,4,5,7,9,11,12,13,14,15,16],14:[1,2,3,4,5,6,7,9,11,12,13,14,15,16],15:[1,2,3,4,5,6,7,9,10,11,12,13,14,15,16],16:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]},y=[21,24,27,30,33,36,39,42,45,48,51,54,57,60,63,66,69,72,75,78,81,84,87,90,93,96,99,102,105,108];t.Notes=function(e){function t(){var e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:[21,108],n=arguments.length>1&&void 0!==arguments[1]?arguments[1]:1;o(this,t);var r=i(this,(t.__proto__||Object.getPrototypeOf(t)).call(this)),u=y.findIndex(function(t){return t>=e[0]}),a=y.findIndex(function(t){return t>=e[1]});a=-1===a?a=y.length:a+1;var s=y.slice(u,a);return r._samplers=_[n].slice(),r._activeNotes=new Map,r._samplers.forEach(function(e,t){r._samplers[t]={},s.forEach(function(n){r._samplers[t][n]=f.default.getNotesUrl(n,e)})}),r}return u(t,e),s(t,[{key:"_hasNote",value:function(e,t){return this._samplers.hasOwnProperty(t)&&this._samplers[t].has(e)}},{key:"_getNote",value:function(e,t){return this._samplers[t].get(e)}},{key:"stop",value:function(e,t,n){this._activeNotes.has(e)&&(this._activeNotes.get(e).forEach(function(e){e.stop(t+1,1)}),this._activeNotes.delete(e))}},{key:"start",value:function(e,t,n){var r=n*(this._samplers.length-1),o=Math.round(r),i=o-r,u=1-.5*i;1===this._samplers.length&&(u=Math.max(n,.05));var s=(0,d.midiToFrequencyRatio)(e),c=a(s,2),l=c[0],f=c[1];if(this._hasNote(l,o)){var p=(0,d.createSource)(this._getNote(l,o));p.playbackRate.value=f,p.connect(this.output),p.curve="exponential",p.start(t,0,void 0,u,0),this._activeNotes.has(e)||this._activeNotes.set(e,[]),this._activeNotes.get(e).push(p)}}},{key:"load",value:function(e){var t=this,n=[];return this._samplers.forEach(function(r,o){var i=new Promise(function(n){t._samplers[o]=new c.Buffers(r,n,e)});n.push(i)}),Promise.all(n)}}]),t}(h.default)},function(e,t,n){"use strict";function r(e){return e&&e.__esModule?e:{default:e}}function o(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function i(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function u(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}Object.defineProperty(t,"__esModule",{value:!0});var a=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),s=n(3),c=r(s),l=n(1),f=(r(l),n(2)),p=n(0),h=(r(p),function(e){function t(){o(this,t);var e=i(this,(t.__proto__||Object.getPrototypeOf(t)).call(this));return e._downTime=1/0,e._currentSound=null,e._buffers=null,e}return u(t,e),a(t,[{key:"load",value:function(e){var t=this;return new Promise(function(n){t._buffers=new p.Buffers({up:"pedalU1.mp3",down:"pedalD1.mp3"},n,e)})}},{key:"_squash",value:function(e){this._currentSound&&this._currentSound.stop(e+.1,.1),this._currentSound=null}},{key:"_playSample",value:function(e,t){this._currentSound=(0,f.createSource)(this._buffers.get(t)),this._currentSound.curve="exponential",this._currentSound.connect(this.output).start(e,(0,f.randomBetween)(0,.01),void 0,.5*(0,f.randomBetween)(.5,1),.05)}},{key:"down",value:function(e){this._squash(e),this._downTime=e,this._playSample(e,"down")}},{key:"up",value:function(e){this._squash(e),this._downTime=1/0,this._playSample(e,"up")}},{key:"isDown",value:function(e){return e>this._downTime}}]),t}(c.default));t.default=h},function(e,t,n){"use strict";function r(e){return e&&e.__esModule?e:{default:e}}function o(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function i(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function u(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}Object.defineProperty(t,"__esModule",{value:!0});var a=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),s=n(1),c=r(s),l=n(3),f=r(l),p=n(2),h=n(0),d=function(e){function t(e){o(this,t);var n=i(this,(t.__proto__||Object.getPrototypeOf(t)).call(this));n._buffers={};for(var r=e[0];r<=e[1];r++)n._buffers[r]=c.default.getReleasesUrl(r);return n}return u(t,e),a(t,[{key:"load",value:function(e){var t=this;return new Promise(function(n){t._buffers=new h.Buffers(t._buffers,n,e)})}},{key:"start",value:function(e,t,n){if(this._buffers.has(e)){var r=(0,p.createSource)(this._buffers.get(e)).connect(this.output);n*=(0,p.randomBetween)(.5,1),r.start(t,0,void 0,.015*n,0)}}}]),t}(f.default);t.default=d},function(e,t,n){"use strict";function r(e){return e&&e.__esModule?e:{default:e}}function o(e,t){if(!(e instanceof t))throw new TypeError("Cannot call a class as a function")}function i(e,t){if(!e)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return!t||"object"!=typeof t&&"function"!=typeof t?e:t}function u(e,t){if("function"!=typeof t&&null!==t)throw new TypeError("Super expression must either be null or a function, not "+typeof t);e.prototype=Object.create(t&&t.prototype,{constructor:{value:e,enumerable:!1,writable:!0,configurable:!0}}),t&&(Object.setPrototypeOf?Object.setPrototypeOf(e,t):e.__proto__=t)}Object.defineProperty(t,"__esModule",{value:!0}),t.Piano=void 0;var a=function(){function e(e,t){for(var n=0;n<t.length;n++){var r=t[n];r.enumerable=r.enumerable||!1,r.configurable=!0,"value"in r&&(r.writable=!0),Object.defineProperty(e,r.key,r)}}return function(t,n,r){return n&&e(t.prototype,n),r&&e(t,r),t}}(),s=n(0),c=r(s),l=n(6),f=r(l),p=n(5),h=n(4),d=r(h),_=n(7),y=r(_),v=n(1);r(v),t.Piano=function(e){function t(){o(this,t);var e=c.default.defaults(arguments,["range","velocities"],{velocities:1,range:[21,108],release:!0}),n=i(this,(t.__proto__||Object.getPrototypeOf(t)).call(this));return n.createInsOuts(0,1),n._loaded=!1,n._heldNotes=new Map,n._sustainedNotes=new Map,n._notes=new p.Notes(e.range,e.velocities).connect(n.output),n._pedal=(new f.default).connect(n.output),e.release&&(n._harmonics=new d.default(e.range).connect(n.output),n._release=new y.default(e.range).connect(n.output)),n}return u(t,e),a(t,[{key:"load",value:function(){var e=this,t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:"https://tambien.github.io/Piano/Salamander/",n=[this._notes.load(t),this._pedal.load(t)];return this._harmonics&&n.push(this._harmonics.load(t)),this._release&&n.push(this._release.load(t)),Promise.all(n).then(function(){e._loaded=!0})}},{key:"pedalDown",value:function(e){return this.loaded&&(e=this.toSeconds(e),this._pedal.isDown(e)||this._pedal.down(e)),this}},{key:"pedalUp",value:function(e){var t=this;return this.loaded&&(e=this.toSeconds(e),this._pedal.isDown(e)&&(this._pedal.up(e),this._sustainedNotes.forEach(function(n,r){t._heldNotes.has(r)||t._notes.stop(r,e)}),this._sustainedNotes.clear())),this}},{key:"keyDown",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:c.default.now(),n=arguments.length>2&&void 0!==arguments[2]?arguments[2]:.8;return this.loaded&&(t=this.toSeconds(t),c.default.isString(e)&&(e=Math.round((0,s.Frequency)(e).toMidi())),this._heldNotes.has(e)||(this._heldNotes.set(e,{time:t,velocity:n}),this._notes.start(e,t,n))),this}},{key:"keyUp",value:function(e){var t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:c.default.now(),n=arguments.length>2&&void 0!==arguments[2]?arguments[2]:.8;if(this.loaded&&(t=this.toSeconds(t),c.default.isString(e)&&(e=Math.round((0,s.Frequency)(e).toMidi())),this._heldNotes.has(e))){var r=this._heldNotes.get(e);this._heldNotes.delete(e),this._release&&this._release.start(e,t,n);var o=t-r.time,i=r.velocity,u=.5/Math.max(o,.1)+i+n;u=Math.pow(Math.log(Math.max(u,1)),2)/2,this._pedal.isDown(t)?this._sustainedNotes.has(e)||this._sustainedNotes.set(e,t):(this._notes.stop(e,t,n),this._harmonics&&this._harmonics.start(e,t,u))}return this}},{key:"setVolume",value:function(e,t){switch(e){case"note":this._notes.volume=t;break;case"pedal":this._pedal.volume=t;break;case"release":this._release&&(this._release.volume=t);break;case"harmonics":this._harmonics&&(this._harmonics.volume=t)}return this}},{key:"stopAll",value:function(){var e=this;return this.pedalUp(),this._heldNotes.forEach(function(t,n){e.keyUp(n)}),this}},{key:"progress",value:function(e){return s.Buffer.on("progress",e),this}},{key:"loaded",get:function(){return this._loaded}}]),t}(s.AudioNode)}])});
 //# sourceMappingURL=Piano.js.map
 
 /***/ })

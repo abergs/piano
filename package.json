@@ -9,5 +9,8 @@
     "tone-piano": "^0.0.12",
     "web-audio-touch-unlock": "^1.0.1",
     "webpack": "^3.10.0"
+  },
+  "scripts": {
+    "build": "webpack --config .\\webpack.config.js --watch"
   }
 }

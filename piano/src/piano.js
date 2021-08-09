@@ -36,7 +36,17 @@ webAudioTouchUnlock.default(context)
 
 
 
+    document.addEventListener("DOMContentLoaded", function(event) { 
+        const playbtn = document.getElementById("playbtn");
+        playbtn.addEventListener("click", () => {
+            startEverything();
+            playbtn.style.display = "none";
+        });
+      });
 function startEverything() {
+    if (Tone.context.state !== 'running') {
+        Tone.context.resume();
+    }
     
     var TonePiano;
     var lodash = require("lodash");
