@@ -1109,29 +1109,35 @@ function playVoice(voice, time) {
 
 function getFilename(date) {
     var now = date || new Date();
+    console.log("now", now);
     var target = 5 * 600000000;
     var minute = roundUp(now, target).getMinutes();
-    var x = "data/parsed/" + now.getHours() + "_" + minute + ".json?v=" + now;
+    var x = "data/parsed/" + now.getHours() + "_" + minute + ".json";
     console.warn(x);
     return x;
 }
 
 var isFetching = false;
-function prepareMoreData() {
+async function prepareMoreData() {
     if (!isFetching) {
-        fetchData();
+        var bla = new Date(new Date().getTime() + -15*60000);
+        console.log("bla", bla, new Date());
+        var res = await fetchData(bla) // -5 minutes;
+        enqueu(res.data);
+        var res2 = await fetchData();
+        enqueu(res2.data);
+        var res3 = await fetchData(new Date(new Date().getTime() + 5*60000)) // +5 minutes;
+        enqueu(res3.data);
     }
 }
 
-function fetchData(date) {
+async function fetchData(date) {
     isFetching = true;
-    fetch(getFilename(date)).then((response) => {
+    const res = await fetch(getFilename(date)).then((response) => {
         return response.json()
-    }).then((json) => {
-        enqueu(json.data);
-    }).then(() => {
-        isFetching = false;
     });
+    isFetching = false;
+    return res;
 }
 
 function mockSthlmDelta() {
@@ -1272,7 +1278,7 @@ function roundUp(date, roundupto) {
     // var minutes = (5 * Math.ceil(date.getMinutes() / 5));
     // date.setMinutes(minutes);
 
-    var b = Date.now() + 15E4;
+    var b = date.getTime() + 15E4;
     var c = b % 3E5;
     var rounded = new Date(15E4 >= c ? b - c : b + 3E5 - c);
     return rounded;
