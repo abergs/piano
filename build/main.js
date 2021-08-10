@@ -25577,7 +25577,7 @@ function getFilename(date) {
 var isFetching = false;
 async function prepareMoreData() {
     if (!isFetching) {
-        var bla = new Date(new Date().getTime() + -15*60000);
+        var bla = new Date(new Date().getTime() + -5*60000);
         console.log("bla", bla, new Date());
         var res = await fetchData(bla) // -5 minutes;
         enqueu(res.data);
